@@ -1,0 +1,165 @@
+# ==========================================
+# AquaSense AI - Comprehensive .gitignore
+# ==========================================
+
+# ------------------------------------------
+# Environment Variables & Secrets
+# ------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.template
+*.env
+*.pem
+*.key
+*.cert
+*.crt
+
+# ------------------------------------------
+# Python & Machine Learning
+# ------------------------------------------
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Distribution / Packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# Pytest & Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+
+# Experiment Tracking & Caches
+mlruns/
+wandb/
+runs/
+.ruff_cache/
+.mypy_cache/
+
+# ------------------------------------------
+# Node.js / JavaScript (Backend & Frontend)
+# ------------------------------------------
+# Dependencies
+node_modules/
+jspm_packages/
+
+# Production Builds
+frontend/build/
+frontend/dist/
+backend/dist/
+dist/
+out/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Tooling / Framework Caches
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+.vite/
+.turbo/
+.next/
+.nuxt/
+
+# Frontend Test Coverage
+coverage/
+.nyc_output/
+
+# ------------------------------------------
+# Operating System Files
+# ------------------------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+
+# ------------------------------------------
+# IDEs and Code Editors
+# ------------------------------------------
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# JetBrains (PyCharm, WebStorm, etc.)
+.idea/
+*.iws
+*.iml
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim / Emacs
+*.swp
+*.swo
+*~
+\#*\#
+.#*
+
+# ------------------------------------------
+# Temporary & Backup Files
+# ------------------------------------------
+*.tmp
+*.temp
+*.bak
+*.backup
