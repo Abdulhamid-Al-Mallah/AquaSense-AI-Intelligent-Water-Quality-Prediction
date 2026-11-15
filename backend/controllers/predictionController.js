@@ -135,9 +135,10 @@ function runPythonInference(normalizedParams) {
 
       try {
         const trimmed = stdoutData.trim();
-        const jsonStart = trimmed.lastIndexOf('{');
+        // Extract JSON strictly from first '{' to last '}' to handle nested objects cleanly
+        const jsonStart = trimmed.indexOf('{');
         const jsonEnd = trimmed.lastIndexOf('}');
-        if (jsonStart === -1 || jsonEnd === -1) {
+        if (jsonStart === -1 || jsonEnd === -1 || jsonEnd < jsonStart) {
           return reject(new Error(`Failed to locate JSON output in Python stdout: ${stdoutData}`));
         }
         const jsonStr = trimmed.substring(jsonStart, jsonEnd + 1);
