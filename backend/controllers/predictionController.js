@@ -82,7 +82,23 @@ function validateAndNormalizeParams(item) {
  */
 function runPythonInference(normalizedParams) {
   return new Promise((resolve, reject) => {
-    const pythonExe = process.env.PYTHON_PATH || 'python';
+    // Prefer explicitly configured PYTHON_PATH; fallback to known user Python or generic 'python'
+    const fallbackUserPython = path.join(
+      process.env.LOCALAPPDATA || '',
+      'Programs',
+      'Python',
+      'Python312',
+      'python.exe'
+    );
+    const fs = require('fs');
+    let pythonExe = process.env.PYTHON_PATH;
+    if (!pythonExe || !fs.existsSync(pythonExe)) {
+      if (fs.existsSync(fallbackUserPython)) {
+        pythonExe = fallbackUserPython;
+      } else {
+        pythonExe = 'python';
+      }
+    }
     const scriptPath = path.resolve(__dirname, '..', 'ml-predict', 'predict.py');
 
     // Prepare JSON payload strictly for predict.py
@@ -119,9 +135,10 @@ function runPythonInference(normalizedParams) {
 
       try {
         const trimmed = stdoutData.trim();
-        const jsonStart = trimmed.lastIndexOf('{');
+        // Extract JSON strictly from first '{' to last '}' to handle nested objects cleanly
+        const jsonStart = trimmed.indexOf('{');
         const jsonEnd = trimmed.lastIndexOf('}');
-        if (jsonStart === -1 || jsonEnd === -1) {
+        if (jsonStart === -1 || jsonEnd === -1 || jsonEnd < jsonStart) {
           return reject(new Error(`Failed to locate JSON output in Python stdout: ${stdoutData}`));
         }
         const jsonStr = trimmed.substring(jsonStart, jsonEnd + 1);
