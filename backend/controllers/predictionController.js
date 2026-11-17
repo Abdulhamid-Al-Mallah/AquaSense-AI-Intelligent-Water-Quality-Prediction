@@ -1,306 +1,309 @@
-const { spawn } = require('child_process');
-const path = require('path');
-const WaterRecord = require('../models/WaterRecord');
-const { analyzeParameters } = require('../utils/waterAdvisor');
+import childProcess from 'child_process';
+import path from 'path';
+import fileSystem from 'fs';
+import { fileURLToPath } from 'url';
+import asyncHandler from 'express-async-handler';
+import WaterRecord from '../models/WaterRecord.js';
+import { analyzeParameters } from '../utils/waterAdvisor.js';
+
+// Setup current directory path for ES Modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
- * Validate physical bounds of the 8 parameters
- * @param {Object} item - Laboratory reading
- * @returns {Object} normalized numbers
+ * Validates and standardizes water quality lab parameters entered by users.
+ * Ensures all numbers are non-negative and within realistic physical ranges.
+ * 
+ * @param {Object} inputData - Raw water reading submitted from client
+ * @returns {Object} Cleaned, validated numbers and metadata
  */
-function validateAndNormalizeParams(item) {
-  // Support both lowercase/camelCase and original title format
-  const ph = Number(item.ph !== undefined ? item.ph : item.pH);
+export function validateAndCleanWaterParameters(inputData) {
+  const ph = Number(inputData.ph !== undefined ? inputData.ph : inputData.pH);
   const turbidity = Number(
-    item.turbidity !== undefined ? item.turbidity : (item['Turbidity (NTU)'] !== undefined ? item['Turbidity (NTU)'] : item.Turbidity)
+    inputData.turbidity !== undefined
+      ? inputData.turbidity
+      : (inputData['Turbidity (NTU)'] !== undefined ? inputData['Turbidity (NTU)'] : inputData.Turbidity)
   );
   const temperature = Number(
-    item.temperature !== undefined ? item.temperature : (item['Temperature (°C)'] !== undefined ? item['Temperature (°C)'] : item.Temperature)
+    inputData.temperature !== undefined
+      ? inputData.temperature
+      : (inputData['Temperature (°C)'] !== undefined ? inputData['Temperature (°C)'] : inputData.Temperature)
   );
-  const doVal = Number(
-    item.do !== undefined ? item.do : (item['DO (mg/L)'] !== undefined ? item['DO (mg/L)'] : item.DO)
+  const dissolvedOxygen = Number(
+    inputData.do !== undefined
+      ? inputData.do
+      : (inputData['DO (mg/L)'] !== undefined ? inputData['DO (mg/L)'] : inputData.DO)
   );
-  const bod = Number(
-    item.bod !== undefined ? item.bod : (item['BOD (mg/L)'] !== undefined ? item['BOD (mg/L)'] : item.BOD)
+  const biologicalOxygenDemand = Number(
+    inputData.bod !== undefined
+      ? inputData.bod
+      : (inputData['BOD (mg/L)'] !== undefined ? inputData['BOD (mg/L)'] : inputData.BOD)
   );
   const lead = Number(
-    item.lead !== undefined ? item.lead : (item['Lead (mg/L)'] !== undefined ? item['Lead (mg/L)'] : item.Lead)
+    inputData.lead !== undefined
+      ? inputData.lead
+      : (inputData['Lead (mg/L)'] !== undefined ? inputData['Lead (mg/L)'] : inputData.Lead)
   );
   const mercury = Number(
-    item.mercury !== undefined ? item.mercury : (item['Mercury (mg/L)'] !== undefined ? item['Mercury (mg/L)'] : item.Mercury)
+    inputData.mercury !== undefined
+      ? inputData.mercury
+      : (inputData['Mercury (mg/L)'] !== undefined ? inputData['Mercury (mg/L)'] : inputData.Mercury)
   );
   const arsenic = Number(
-    item.arsenic !== undefined ? item.arsenic : (item['Arsenic (mg/L)'] !== undefined ? item['Arsenic (mg/L)'] : item.Arsenic)
+    inputData.arsenic !== undefined
+      ? inputData.arsenic
+      : (inputData['Arsenic (mg/L)'] !== undefined ? inputData['Arsenic (mg/L)'] : inputData.Arsenic)
   );
 
-  const numChecks = [
-    { name: 'ph', val: ph },
-    { name: 'turbidity', val: turbidity },
-    { name: 'temperature', val: temperature },
-    { name: 'do', val: doVal },
-    { name: 'bod', val: bod },
-    { name: 'lead', val: lead },
-    { name: 'mercury', val: mercury },
-    { name: 'arsenic', val: arsenic }
+  const parameterChecks = [
+    { name: 'pH', value: ph },
+    { name: 'Turbidity', value: turbidity },
+    { name: 'Temperature', value: temperature },
+    { name: 'Dissolved Oxygen (DO)', value: dissolvedOxygen },
+    { name: 'Biochemical Oxygen Demand (BOD)', value: biologicalOxygenDemand },
+    { name: 'Lead', value: lead },
+    { name: 'Mercury', value: mercury },
+    { name: 'Arsenic', value: arsenic }
   ];
 
-  for (const c of numChecks) {
-    if (isNaN(c.val)) {
-      throw new Error(`Invalid value for parameter '${c.name}': Must be a valid number`);
+  for (const item of parameterChecks) {
+    if (isNaN(item.value)) {
+      throw new Error(`The value for ${item.name} must be a valid number.`);
     }
   }
 
-  // Physical bounds validation
   if (ph < 0 || ph > 14) {
-    throw new Error(`pH value (${ph}) is outside physically plausible range (0.0 to 14.0)`);
+    throw new Error(`pH value (${ph}) must be between 0.0 and 14.0.`);
   }
-  if (turbidity < 0) throw new Error(`Turbidity (${turbidity}) cannot be negative`);
-  if (doVal < 0) throw new Error(`Dissolved Oxygen (${doVal}) cannot be negative`);
-  if (bod < 0) throw new Error(`BOD (${bod}) cannot be negative`);
-  if (lead < 0) throw new Error(`Lead (${lead}) cannot be negative`);
-  if (mercury < 0) throw new Error(`Mercury (${mercury}) cannot be negative`);
-  if (arsenic < 0) throw new Error(`Arsenic (${arsenic}) cannot be negative`);
+  if (turbidity < 0) throw new Error('Turbidity cannot be a negative value.');
+  if (dissolvedOxygen < 0) throw new Error('Dissolved Oxygen cannot be a negative value.');
+  if (biologicalOxygenDemand < 0) throw new Error('BOD cannot be a negative value.');
+  if (lead < 0) throw new Error('Lead concentration cannot be negative.');
+  if (mercury < 0) throw new Error('Mercury concentration cannot be negative.');
+  if (arsenic < 0) throw new Error('Arsenic concentration cannot be negative.');
 
   return {
-    ph,
-    turbidity,
-    temperature,
-    do: doVal,
-    bod,
-    lead,
-    mercury,
-    arsenic,
-    location: item.location || 'Main Lab',
-    timestamp: item.timestamp ? new Date(item.timestamp) : new Date()
+    ph: ph,
+    turbidity: turbidity,
+    temperature: temperature,
+    do: dissolvedOxygen,
+    bod: biologicalOxygenDemand,
+    lead: lead,
+    mercury: mercury,
+    arsenic: arsenic,
+    location: inputData.location ? String(inputData.location).trim() : 'Main Lab',
+    timestamp: inputData.timestamp ? new Date(inputData.timestamp) : new Date()
   };
 }
 
 /**
- * Execute Python inference script via child_process.spawn
- * @param {Object} normalizedParams 
- * @returns {Promise<Object>} ML prediction result
+ * Locates the Python executable with machine learning packages installed.
  */
-function runPythonInference(normalizedParams) {
+export function getPythonExecutablePath() {
+  if (process.env.PYTHON_PATH && fileSystem.existsSync(process.env.PYTHON_PATH)) {
+    return process.env.PYTHON_PATH;
+  }
+
+  const localAppDataPath = process.env.LOCALAPPDATA || '';
+  const standardPython312Path = path.join(localAppDataPath, 'Programs', 'Python', 'Python312', 'python.exe');
+  if (fileSystem.existsSync(standardPython312Path)) {
+    return standardPython312Path;
+  }
+
+  return 'python';
+}
+
+/**
+ * Runs the Python prediction script via child process and returns parsed JSON output.
+ * 
+ * @param {Object} cleanParameters - The validated 8 water parameters
+ * @returns {Promise<Object>} Model predictions (drinkability score, class, probabilities)
+ */
+export function executePythonPrediction(cleanParameters) {
   return new Promise((resolve, reject) => {
-    // Prefer explicitly configured PYTHON_PATH; fallback to known user Python or generic 'python'
-    const fallbackUserPython = path.join(
-      process.env.LOCALAPPDATA || '',
-      'Programs',
-      'Python',
-      'Python312',
-      'python.exe'
-    );
-    const fs = require('fs');
-    let pythonExe = process.env.PYTHON_PATH;
-    if (!pythonExe || !fs.existsSync(pythonExe)) {
-      if (fs.existsSync(fallbackUserPython)) {
-        pythonExe = fallbackUserPython;
-      } else {
-        pythonExe = 'python';
-      }
-    }
+    const pythonExecutable = getPythonExecutablePath();
     const scriptPath = path.resolve(__dirname, '..', 'ml-predict', 'predict.py');
 
-    // Prepare JSON payload strictly for predict.py
-    const payload = JSON.stringify({
-      pH: normalizedParams.ph,
-      Turbidity: normalizedParams.turbidity,
-      Temperature: normalizedParams.temperature,
-      DO: normalizedParams.do,
-      BOD: normalizedParams.bod,
-      Lead: normalizedParams.lead,
-      Mercury: normalizedParams.mercury,
-      Arsenic: normalizedParams.arsenic
+    const parametersPayload = JSON.stringify({
+      pH: cleanParameters.ph,
+      Turbidity: cleanParameters.turbidity,
+      Temperature: cleanParameters.temperature,
+      DO: cleanParameters.do,
+      BOD: cleanParameters.bod,
+      Lead: cleanParameters.lead,
+      Mercury: cleanParameters.mercury,
+      Arsenic: cleanParameters.arsenic
     });
 
-    const pythonProcess = spawn(pythonExe, [scriptPath, payload]);
+    const pythonChildProcess = childProcess.spawn(pythonExecutable, [scriptPath, parametersPayload]);
 
-    let stdoutData = '';
-    let stderrData = '';
+    let standardOutput = '';
+    let standardError = '';
 
-    pythonProcess.stdout.on('data', (data) => {
-      stdoutData += data.toString();
+    pythonChildProcess.stdout.on('data', (chunk) => {
+      standardOutput += chunk.toString();
     });
 
-    pythonProcess.stderr.on('data', (data) => {
-      stderrData += data.toString();
+    pythonChildProcess.stderr.on('data', (chunk) => {
+      standardError += chunk.toString();
     });
 
-    pythonProcess.on('close', (code) => {
-      if (code !== 0) {
+    pythonChildProcess.on('close', (exitCode) => {
+      if (exitCode !== 0) {
         return reject(
-          new Error(`Python inference exited with code ${code}: ${stderrData || stdoutData}`)
+          new Error(`Prediction process failed with exit code ${exitCode}. Details: ${standardError || standardOutput}`)
         );
       }
 
       try {
-        const trimmed = stdoutData.trim();
-        // Extract JSON strictly from first '{' to last '}' to handle nested objects cleanly
-        const jsonStart = trimmed.indexOf('{');
-        const jsonEnd = trimmed.lastIndexOf('}');
-        if (jsonStart === -1 || jsonEnd === -1 || jsonEnd < jsonStart) {
-          return reject(new Error(`Failed to locate JSON output in Python stdout: ${stdoutData}`));
-        }
-        const jsonStr = trimmed.substring(jsonStart, jsonEnd + 1);
-        const result = JSON.parse(jsonStr);
+        const trimmedOutput = standardOutput.trim();
+        const firstBraceIndex = trimmedOutput.indexOf('{');
+        const lastBraceIndex = trimmedOutput.lastIndexOf('}');
 
-        if (!result.success) {
-          return reject(new Error(result.error || 'Python inference failed'));
+        if (firstBraceIndex === -1 || lastBraceIndex === -1 || lastBraceIndex < firstBraceIndex) {
+          return reject(new Error(`Unable to find JSON in script output: ${standardOutput}`));
         }
-        resolve(result);
-      } catch (err) {
-        reject(new Error(`Failed to parse ML inference JSON response: ${err.message}. Raw output: ${stdoutData}`));
+
+        const jsonSubstring = trimmedOutput.substring(firstBraceIndex, lastBraceIndex + 1);
+        const parsedResponse = JSON.parse(jsonSubstring);
+
+        if (!parsedResponse.success) {
+          return reject(new Error(parsedResponse.error || 'Prediction process reported failure.'));
+        }
+
+        resolve(parsedResponse);
+      } catch (parseError) {
+        reject(new Error(`Error reading prediction response: ${parseError.message}. Output was: ${standardOutput}`));
       }
     });
 
-    pythonProcess.on('error', (err) => {
-      reject(new Error(`Failed to spawn Python process (${pythonExe}): ${err.message}`));
+    pythonChildProcess.on('error', (processError) => {
+      reject(new Error(`Could not start Python at "${pythonExecutable}": ${processError.message}`));
     });
   });
 }
 
 /**
- * @desc    Predict Water Quality (Single form entry or Bulk array)
- * @route   POST /api/predict
- * @access  Public / Protected
+ * Predict water quality for a single lab sample or a batch list of samples.
+ * Route: POST /api/predict
  */
-const predictWaterQuality = async (req, res, next) => {
-  try {
-    const rawPayload = req.body;
-    const isArray = Array.isArray(rawPayload);
-    const items = isArray ? rawPayload : [rawPayload];
+export const predictWaterQuality = asyncHandler(async (request, response) => {
+  const requestPayload = request.body;
+  const isBatchRequest = Array.isArray(requestPayload);
+  const sampleList = isBatchRequest ? requestPayload : [requestPayload];
 
-    if (!items.length) {
-      return res.status(400).json({
-        success: false,
-        error: 'Empty request body. Please provide water quality parameters.'
-      });
-    }
-
-    const processedRecords = [];
-
-    for (const rawItem of items) {
-      // 1. Validate & normalize inputs
-      const normalized = validateAndNormalizeParams(rawItem);
-
-      // 2. Invoke ML inference via Python IPC
-      const mlOutput = await runPythonInference(normalized);
-
-      // 3. Enrich with Regulatory & Decision-Support Advice
-      const advice = analyzeParameters(normalized, mlOutput.drinkabilityScore);
-
-      // 4. Construct MongoDB document
-      const recordDoc = {
-        ph: normalized.ph,
-        turbidity: normalized.turbidity,
-        temperature: normalized.temperature,
-        do: normalized.do,
-        bod: normalized.bod,
-        lead: normalized.lead,
-        mercury: normalized.mercury,
-        arsenic: normalized.arsenic,
-        location: normalized.location,
-        timestamp: normalized.timestamp,
-        submittedBy: req.user ? req.user._id : (rawItem.submittedBy || null),
-        drinkabilityScore: mlOutput.drinkabilityScore,
-        predictedClass: mlOutput.predictedClass,
-        riskStatus: advice.riskStatus,
-        warnings: advice.warnings,
-        recommendations: advice.recommendations
-      };
-
-      processedRecords.push(recordDoc);
-    }
-
-    // Insert into MongoDB
-    const savedRecords = await WaterRecord.insertMany(processedRecords);
-
-    return res.status(201).json({
-      success: true,
-      count: savedRecords.length,
-      data: isArray ? savedRecords : savedRecords[0]
-    });
-  } catch (error) {
-    next(error);
+  if (sampleList.length === 0) {
+    response.status(400);
+    throw new Error('Please provide at least one sample with water parameters.');
   }
-};
+
+  const recordsToSave = [];
+
+  for (const rawSample of sampleList) {
+    const cleanParams = validateAndCleanWaterParameters(rawSample);
+    const prediction = await executePythonPrediction(cleanParams);
+    const advisory = analyzeParameters(cleanParams, prediction.drinkabilityScore);
+
+    const recordDocument = {
+      ph: cleanParams.ph,
+      turbidity: cleanParams.turbidity,
+      temperature: cleanParams.temperature,
+      do: cleanParams.do,
+      bod: cleanParams.bod,
+      lead: cleanParams.lead,
+      mercury: cleanParams.mercury,
+      arsenic: cleanParams.arsenic,
+      location: cleanParams.location,
+      timestamp: cleanParams.timestamp,
+      submittedBy: request.user ? request.user._id : (rawSample.submittedBy || null),
+      drinkabilityScore: prediction.drinkabilityScore,
+      predictedClass: prediction.predictedClass,
+      riskStatus: advisory.riskStatus,
+      warnings: advisory.warnings,
+      recommendations: advisory.recommendations
+    };
+
+    recordsToSave.push(recordDocument);
+  }
+
+  const savedRecords = await WaterRecord.insertMany(recordsToSave);
+
+  response.status(201).json({
+    success: true,
+    count: savedRecords.length,
+    data: isBatchRequest ? savedRecords : savedRecords[0]
+  });
+});
 
 /**
- * @desc    Get Water Records History with Filters
- * @route   GET /api/history
- * @access  Public / Protected
+ * Get historical water test records with optional search and date filters.
+ * Route: GET /api/history
  */
-const getHistory = async (req, res, next) => {
-  try {
-    const { location, riskStatus, startDate, endDate, limit = 100, page = 1 } = req.query;
+export const getHistory = asyncHandler(async (request, response) => {
+  const {
+    location,
+    riskStatus,
+    startDate,
+    endDate,
+    limit = 100,
+    page = 1
+  } = request.query;
 
-    const query = {};
+  const filterCriteria = {};
 
-    if (location) {
-      query.location = { $regex: location, $options: 'i' };
-    }
-
-    if (riskStatus) {
-      query.riskStatus = riskStatus;
-    }
-
-    if (startDate || endDate) {
-      query.timestamp = {};
-      if (startDate) query.timestamp.$gte = new Date(startDate);
-      if (endDate) query.timestamp.$lte = new Date(endDate);
-    }
-
-    const skip = (Number(page) - 1) * Number(limit);
-    const total = await WaterRecord.countDocuments(query);
-    const records = await WaterRecord.find(query)
-      .sort({ timestamp: -1 })
-      .skip(skip)
-      .limit(Number(limit))
-      .populate('submittedBy', 'name email role');
-
-    return res.status(200).json({
-      success: true,
-      total,
-      page: Number(page),
-      pages: Math.ceil(total / Number(limit)),
-      count: records.length,
-      data: records
-    });
-  } catch (error) {
-    next(error);
+  if (location) {
+    filterCriteria.location = { $regex: location, $options: 'i' };
   }
-};
+
+  if (riskStatus) {
+    filterCriteria.riskStatus = riskStatus;
+  }
+
+  if (startDate || endDate) {
+    filterCriteria.timestamp = {};
+    if (startDate) filterCriteria.timestamp.$gte = new Date(startDate);
+    if (endDate) filterCriteria.timestamp.$lte = new Date(endDate);
+  }
+
+  const pageNumber = Number(page);
+  const pageSize = Number(limit);
+  const skipCount = (pageNumber - 1) * pageSize;
+
+  const totalCount = await WaterRecord.countDocuments(filterCriteria);
+  const records = await WaterRecord.find(filterCriteria)
+    .sort({ timestamp: -1 })
+    .skip(skipCount)
+    .limit(pageSize)
+    .populate('submittedBy', 'name email role');
+
+  response.status(200).json({
+    success: true,
+    total: totalCount,
+    page: pageNumber,
+    pages: Math.ceil(totalCount / pageSize),
+    count: records.length,
+    data: records
+  });
+});
 
 /**
- * @desc    Delete a specific record by ID
- * @route   DELETE /api/history/:id
- * @access  Public / Protected
+ * Delete a specific record by its database ID.
+ * Route: DELETE /api/history/:id
  */
-const deleteRecord = async (req, res, next) => {
-  try {
-    const record = await WaterRecord.findById(req.params.id);
+export const deleteRecord = asyncHandler(async (request, response) => {
+  const recordId = request.params.id;
+  const existingRecord = await WaterRecord.findById(recordId);
 
-    if (!record) {
-      return res.status(404).json({
-        success: false,
-        error: `Water record not found with id ${req.params.id}`
-      });
-    }
-
-    await record.deleteOne();
-
-    return res.status(200).json({
-      success: true,
-      message: 'Water record deleted successfully',
-      data: {}
-    });
-  } catch (error) {
-    next(error);
+  if (!existingRecord) {
+    response.status(404);
+    throw new Error(`No record found with ID: ${recordId}`);
   }
-};
 
-module.exports = {
-  predictWaterQuality,
-  getHistory,
-  deleteRecord
-};
+  await existingRecord.deleteOne();
+
+  response.status(200).json({
+    success: true,
+    message: 'Water record deleted successfully.',
+    data: {}
+  });
+});

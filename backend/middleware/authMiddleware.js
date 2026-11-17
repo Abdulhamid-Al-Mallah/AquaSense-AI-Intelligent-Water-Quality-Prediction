@@ -1,55 +1,39 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+import jwt from 'jsonwebtoken';
+import asyncHandler from 'express-async-handler';
+import User from '../models/User.js';
 
-const protect = async (req, res, next) => {
-  let token;
+/**
+ * Middleware that validates the JSON Web Token (JWT) sent in the Authorization header.
+ * Uses express-async-handler for clean error forwarding.
+ */
+export const protect = asyncHandler(async (request, response, next) => {
+  let bearerToken;
 
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith('Bearer')
-  ) {
-    try {
-      token = req.headers.authorization.split(' ')[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'aquasense_jwt_secret_dev_key_2026_seng491');
-      
-      req.user = await User.findById(decoded.id).select('-password');
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          error: 'User associated with this token no longer exists'
-        });
-      }
-      return next();
-    } catch (error) {
-      console.error('[Auth Middleware Error]:', error.message);
-      return res.status(401).json({
-        success: false,
-        error: 'Not authorized, token failed verification'
-      });
-    }
+  const authHeader = request.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    bearerToken = authHeader.split(' ')[1];
   }
 
-  if (!token) {
-    return res.status(401).json({
-      success: false,
-      error: 'Not authorized, Bearer token required'
-    });
+  if (!bearerToken) {
+    response.status(401);
+    throw new Error('Access denied. Please provide a valid Bearer token.');
   }
-};
 
-const authorize = (...roles) => {
-  return (req, res, next) => {
-    if (!req.user || !roles.includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        error: `User role '${req.user ? req.user.role : 'none'}' is not authorized to access this route`
-      });
+  try {
+    const secretKey = process.env.JWT_SECRET || 'aquasense_jwt_secret_dev_key_2026_seng491';
+    const decodedTokenData = jwt.verify(bearerToken, secretKey);
+
+    const authenticatedUser = await User.findById(decodedTokenData.id).select('-password');
+    if (!authenticatedUser) {
+      response.status(401);
+      throw new Error('The user linked to this token no longer exists.');
     }
+
+    request.user = authenticatedUser;
     next();
-  };
-};
-
-module.exports = {
-  protect,
-  authorize
-};
+  } catch (tokenVerificationError) {
+    console.error('[Authentication Guard]:', tokenVerificationError.message);
+    response.status(401);
+    throw new Error('Invalid or expired session token. Please log in again.');
+  }
+});

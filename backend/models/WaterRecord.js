@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const waterRecordSchema = new mongoose.Schema(
   {
@@ -70,7 +70,7 @@ const waterRecordSchema = new mongoose.Schema(
     predictedClass: {
       type: Number,
       required: [true, 'predictedClass is required'],
-      enum: [0, 1, 2] // 0: Clean/Safe, 1: Moderate, 2: Polluted
+      enum: [0, 1, 2] // 0: Clean, 1: Moderate, 2: Polluted
     },
     riskStatus: {
       type: String,
@@ -93,9 +93,10 @@ const waterRecordSchema = new mongoose.Schema(
   }
 );
 
-// Indexes for high-performance analytics & time-series lookups
+// Indexes for performance on time-series queries
 waterRecordSchema.index({ timestamp: -1 });
 waterRecordSchema.index({ location: 1 });
 waterRecordSchema.index({ riskStatus: 1 });
 
-module.exports = mongoose.model('WaterRecord', waterRecordSchema);
+const WaterRecord = mongoose.model('WaterRecord', waterRecordSchema);
+export default WaterRecord;

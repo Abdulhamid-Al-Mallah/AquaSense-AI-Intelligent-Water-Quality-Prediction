@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
+import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 
 const userSchema = new mongoose.Schema(
   {
@@ -24,11 +24,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Please provide a password'],
       minlength: [6, 'Password must be at least 6 characters'],
-      select: false // Exclude from query results by default
+      select: false // Excluded from query results by default
     },
     role: {
       type: String,
-      enum: ['analyst', 'admin', 'viewer'],
       default: 'analyst'
     }
   },
@@ -47,9 +46,10 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
-// Compare password helper method
+// Compare entered password with stored hash
 userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-module.exports = mongoose.model('User', userSchema);
+const User = mongoose.model('User', userSchema);
+export default User;

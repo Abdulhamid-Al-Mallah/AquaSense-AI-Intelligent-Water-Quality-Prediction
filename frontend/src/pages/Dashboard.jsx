@@ -3,7 +3,6 @@ import {
   Activity,
   Droplet,
   AlertTriangle,
-  CheckCircle2,
   TrendingUp,
   MapPin,
   RefreshCw,
@@ -24,53 +23,59 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts';
-import api from '../services/api';
+import apiClient from '../services/api';
 
 export const Dashboard = () => {
-  const [summary, setSummary] = useState(null);
-  const [trends, setTrends] = useState([]);
-  const [locations, setLocations] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [dashboardSummary, setDashboardSummary] = useState(null);
+  const [trendDataPoints, setTrendDataPoints] = useState([]);
+  const [locationSummaries, setLocationSummaries] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const fetchDashboardData = async () => {
+  const loadDashboardData = async () => {
     try {
-      const [sumRes, trendRes, locRes] = await Promise.all([
-        api.get('/analytics/summary'),
-        api.get('/analytics/trends?days=30'),
-        api.get('/analytics/locations')
+      const [summaryResponse, trendsResponse, locationsResponse] = await Promise.all([
+        apiClient.get('/analytics/summary'),
+        apiClient.get('/analytics/trends?days=30'),
+        apiClient.get('/analytics/locations')
       ]);
 
-      if (sumRes.data?.success) setSummary(sumRes.data.data);
-      if (trendRes.data?.success) setTrends(trendRes.data.data);
-      if (locRes.data?.success) setLocations(locRes.data.data);
-    } catch (err) {
-      console.error('Error fetching analytics:', err);
+      if (summaryResponse.data?.success) {
+        setDashboardSummary(summaryResponse.data.data);
+      }
+      if (trendsResponse.data?.success) {
+        setTrendDataPoints(trendsResponse.data.data);
+      }
+      if (locationsResponse.data?.success) {
+        setLocationSummaries(locationsResponse.data.data);
+      }
+    } catch (fetchError) {
+      console.error('Failed to load dashboard data:', fetchError.message);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
   useEffect(() => {
-    fetchDashboardData();
+    loadDashboardData();
   }, []);
 
-  const handleRefresh = () => {
-    setRefreshing(true);
-    fetchDashboardData();
+  const handleManualRefresh = () => {
+    setIsRefreshing(true);
+    loadDashboardData();
   };
 
-  // Prepare Pie Chart Data
-  const pieData = summary
+  // Pie chart risk distribution slices
+  const riskDistributionSlices = dashboardSummary
     ? [
-        { name: 'Safe (≥75%)', value: summary.safeCount || 0, color: '#10b981' },
-        { name: 'Moderate (40–74%)', value: summary.moderateCount || 0, color: '#f59e0b' },
-        { name: 'Critical (<40%)', value: summary.criticalCount || 0, color: '#f43f5e' }
+        { name: 'Safe (≥75%)', value: dashboardSummary.safeCount || 0, color: '#10b981' },
+        { name: 'Moderate (40–74%)', value: dashboardSummary.moderateCount || 0, color: '#f59e0b' },
+        { name: 'Critical (<40%)', value: dashboardSummary.criticalCount || 0, color: '#f43f5e' }
       ]
     : [];
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex h-96 items-center justify-center">
         <div className="flex flex-col items-center space-y-3">
@@ -83,25 +88,25 @@ export const Dashboard = () => {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
-      {/* Top Welcome & Actions Header */}
+      {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Environmental Lab Intelligence</h1>
           <p className="text-sm text-slate-500 mt-0.5">Continuous ML Drinkability Probability & Remediation Analytics</p>
         </div>
         <button
-          onClick={handleRefresh}
-          disabled={refreshing}
+          onClick={handleManualRefresh}
+          disabled={isRefreshing}
           className="inline-flex items-center space-x-2 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 shadow-sm transition-all self-start sm:self-auto"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-sky-500' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-sky-500' : ''}`} />
           <span>Sync Telemetry</span>
         </button>
       </div>
 
-      {/* 4 Top KPI Cards */}
+      {/* 4 Summary KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* KPI 1 */}
+        {/* KPI 1: Total Samples */}
         <div className="bg-white rounded-xl p-5 border border-slate-200/80 shadow-sm hover:shadow transition-shadow">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Samples Tested</span>
@@ -110,7 +115,7 @@ export const Dashboard = () => {
             </div>
           </div>
           <div className="mt-3">
-            <span className="text-3xl font-black text-slate-900">{summary?.totalTests || 0}</span>
+            <span className="text-3xl font-black text-slate-900">{dashboardSummary?.totalTests || 0}</span>
             <span className="text-xs text-slate-400 ml-2 font-medium">certified assays</span>
           </div>
           <p className="text-[11px] text-slate-500 mt-2 flex items-center space-x-1">
@@ -119,7 +124,7 @@ export const Dashboard = () => {
           </p>
         </div>
 
-        {/* KPI 2 */}
+        {/* KPI 2: Average Drinkability */}
         <div className="bg-white rounded-xl p-5 border border-slate-200/80 shadow-sm hover:shadow transition-shadow">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Avg Drinkability</span>
@@ -128,18 +133,18 @@ export const Dashboard = () => {
             </div>
           </div>
           <div className="mt-3">
-            <span className="text-3xl font-black text-slate-900">{summary?.averageDrinkability ?? 0}%</span>
+            <span className="text-3xl font-black text-slate-900">{dashboardSummary?.averageDrinkability ?? 0}%</span>
             <span className="text-xs text-slate-400 ml-2 font-medium">fleet mean</span>
           </div>
           <div className="w-full bg-slate-100 rounded-full h-1.5 mt-3 overflow-hidden">
             <div
               className="bg-emerald-500 h-1.5 rounded-full"
-              style={{ width: `${Math.min(100, summary?.averageDrinkability || 0)}%` }}
+              style={{ width: `${Math.min(100, dashboardSummary?.averageDrinkability || 0)}%` }}
             ></div>
           </div>
         </div>
 
-        {/* KPI 3 */}
+        {/* KPI 3: Critical Alerts */}
         <div className="bg-white rounded-xl p-5 border border-slate-200/80 shadow-sm hover:shadow transition-shadow">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Critical Alerts</span>
@@ -148,13 +153,13 @@ export const Dashboard = () => {
             </div>
           </div>
           <div className="mt-3">
-            <span className="text-3xl font-black text-rose-600">{summary?.criticalCount || 0}</span>
+            <span className="text-3xl font-black text-rose-600">{dashboardSummary?.criticalCount || 0}</span>
             <span className="text-xs text-slate-400 ml-2 font-medium">samples &lt;40%</span>
           </div>
           <p className="text-[11px] text-slate-500 mt-2">Immediate treatment triggers active</p>
         </div>
 
-        {/* KPI 4 */}
+        {/* KPI 4: Latest Sample */}
         <div className="bg-white rounded-xl p-5 border border-slate-200/80 shadow-sm hover:shadow transition-shadow">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Latest Sample</span>
@@ -165,30 +170,31 @@ export const Dashboard = () => {
           <div className="mt-3">
             <span
               className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                summary?.latestRecord?.riskStatus === 'Safe'
+                dashboardSummary?.latestRecord?.riskStatus === 'Safe'
                   ? 'bg-emerald-100 text-emerald-800'
-                  : summary?.latestRecord?.riskStatus === 'Moderate'
+                  : dashboardSummary?.latestRecord?.riskStatus === 'Moderate'
                   ? 'bg-amber-100 text-amber-800'
                   : 'bg-rose-100 text-rose-800'
               }`}
             >
-              {summary?.latestRecord?.riskStatus || 'No Data'} ({(summary?.latestRecord?.drinkabilityScore ?? 0).toFixed(1)}%)
+              {dashboardSummary?.latestRecord?.riskStatus || 'No Data'} (
+              {(dashboardSummary?.latestRecord?.drinkabilityScore ?? 0).toFixed(1)}%)
             </span>
           </div>
           <p className="text-[11px] text-slate-500 mt-2 truncate">
-            Site: <span className="font-semibold text-slate-700">{summary?.latestRecord?.location || 'N/A'}</span>
+            Site: <span className="font-semibold text-slate-700">{dashboardSummary?.latestRecord?.location || 'N/A'}</span>
           </p>
         </div>
       </div>
 
-      {/* Visual Analytics Grid */}
+      {/* Visual Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Trend Area Chart (2 cols) */}
+        {/* Daily Evolution Area Chart */}
         <div className="lg:col-span-2 bg-white rounded-xl p-6 border border-slate-200/80 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-base font-bold text-slate-900 tracking-tight">Drinkability & pH Evolution</h2>
-              <p className="text-xs text-slate-500">Chronological moving averages across all monitoring stations</p>
+              <p className="text-xs text-slate-500">Chronological daily averages across all sampling stations</p>
             </div>
             <div className="flex items-center space-x-2 text-xs font-semibold text-slate-500">
               <TrendingUp className="w-4 h-4 text-sky-600" />
@@ -197,9 +203,9 @@ export const Dashboard = () => {
           </div>
 
           <div className="h-72 w-full">
-            {trends.length > 0 ? (
+            {trendDataPoints.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trends} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <AreaChart data={trendDataPoints} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="scoreColor" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.4} />
@@ -246,7 +252,7 @@ export const Dashboard = () => {
           </div>
         </div>
 
-        {/* Risk Distribution Donut Chart (1 col) */}
+        {/* Risk Distribution Donut Chart */}
         <div className="bg-white rounded-xl p-6 border border-slate-200/80 shadow-sm flex flex-col justify-between">
           <div>
             <h2 className="text-base font-bold text-slate-900 tracking-tight">Risk Distribution</h2>
@@ -254,11 +260,11 @@ export const Dashboard = () => {
           </div>
 
           <div className="h-56 w-full my-auto">
-            {summary && summary.totalTests > 0 ? (
+            {dashboardSummary && dashboardSummary.totalTests > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={pieData}
+                    data={riskDistributionSlices}
                     cx="50%"
                     cy="50%"
                     innerRadius={55}
@@ -266,8 +272,8 @@ export const Dashboard = () => {
                     paddingAngle={4}
                     dataKey="value"
                   >
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    {riskDistributionSlices.map((sliceItem, sliceIndex) => (
+                      <Cell key={`slice-${sliceIndex}`} fill={sliceItem.color} />
                     ))}
                   </Pie>
                   <Tooltip
@@ -291,26 +297,26 @@ export const Dashboard = () => {
           <div className="grid grid-cols-3 gap-2 pt-4 border-t border-slate-100 text-center">
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase">Safe</p>
-              <p className="text-sm font-bold text-emerald-600">{summary?.safeCount || 0}</p>
+              <p className="text-sm font-bold text-emerald-600">{dashboardSummary?.safeCount || 0}</p>
             </div>
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase">Moderate</p>
-              <p className="text-sm font-bold text-amber-600">{summary?.moderateCount || 0}</p>
+              <p className="text-sm font-bold text-amber-600">{dashboardSummary?.moderateCount || 0}</p>
             </div>
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase">Critical</p>
-              <p className="text-sm font-bold text-rose-600">{summary?.criticalCount || 0}</p>
+              <p className="text-sm font-bold text-rose-600">{dashboardSummary?.criticalCount || 0}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Location Site Comparison Bar Chart */}
+      {/* Station Breakdown Bar Chart */}
       <div className="bg-white rounded-xl p-6 border border-slate-200/80 shadow-sm">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-base font-bold text-slate-900 tracking-tight">Sampling Site Comparison</h2>
-            <p className="text-xs text-slate-500">Average drinkability score vs. critical alert incidents by station</p>
+            <p className="text-xs text-slate-500">Average drinkability score vs. critical alerts by station</p>
           </div>
           <div className="flex items-center space-x-1.5 text-xs text-slate-500">
             <MapPin className="w-4 h-4 text-sky-600" />
@@ -319,9 +325,9 @@ export const Dashboard = () => {
         </div>
 
         <div className="h-64 w-full">
-          {locations.length > 0 ? (
+          {locationSummaries.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={locations} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <BarChart data={locationSummaries} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="location" tick={{ fontSize: 11, fill: '#64748b' }} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: '#64748b' }} tickLine={false} />

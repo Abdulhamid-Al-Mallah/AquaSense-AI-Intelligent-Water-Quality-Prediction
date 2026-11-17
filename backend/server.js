@@ -1,66 +1,72 @@
-const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const path = require('path');
-const connectDB = require('./config/db');
-const errorHandler = require('./middleware/errorMiddleware');
-const { seedAdmin } = require('./controllers/authController');
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-// Load environment variables from backend/.env or root fallback
+import connectDB from './config/db.js';
+import errorHandler from './middleware/errorMiddleware.js';
+import { seedAdmin } from './controllers/authController.js';
+import authRoutes from './routes/authRoutes.js';
+import apiRoutes from './routes/apiRoutes.js';
+
+// Setup current directory path for ES Modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables
 dotenv.config({ path: path.join(__dirname, '.env') });
 
-// Initialize Express app
-const app = express();
+// Initialize Express application
+const application = express();
 
-// Connect to MongoDB
+// Connect to MongoDB Database
 connectDB().then(() => {
-  // Seed default admin for initial testing & development
+  // Seed demo account on startup if absent
   seedAdmin();
 });
 
-// Middlewares
-app.use(cors());
-// Support bulk JSON lab uploads up to 5MB
-app.use(express.json({ limit: '5mb' }));
-app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+// Configure middleware
+application.use(cors());
+application.use(express.json({ limit: '5mb' }));
+application.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
 // Health Check Endpoint
-app.get('/api/health', (req, res) => {
-  res.status(200).json({
+application.get('/api/health', (request, response) => {
+  response.status(200).json({
     success: true,
     message: 'AquaSense AI Backend API is online and operational',
     timestamp: new Date().toISOString()
   });
 });
 
-// API Routes
-const authRoutes = require('./routes/authRoutes');
-const apiRoutes = require('./routes/apiRoutes');
-
-app.use('/api/auth', authRoutes);
-app.use('/api', apiRoutes);
+// Mount modular API routes
+application.use('/api/auth', authRoutes);
+application.use('/api', apiRoutes);
 
 // Catch-all 404 Route Handler
-app.use('*', (req, res) => {
-  res.status(404).json({
+application.use('*', (request, response) => {
+  response.status(404).json({
     success: false,
-    error: `Cannot find route: ${req.originalUrl}`
+    error: `Cannot find route: ${request.originalUrl}`
   });
 });
 
-// Centralized Error Handling Middleware
-app.use(errorHandler);
+// Central Error Handling Middleware
+application.use(errorHandler);
 
 // Server Listening
-const PORT = process.env.PORT || 5000;
-const server = app.listen(PORT, () => {
-  console.log(`[AquaSense AI] Backend running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+const SERVER_PORT = process.env.PORT || 5000;
+const serverInstance = application.listen(SERVER_PORT, () => {
+  console.log(
+    `[AquaSense AI] Backend running in ${process.env.NODE_ENV || 'development'} mode on port ${SERVER_PORT}`
+  );
 });
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err) => {
-  console.error(`[AquaSense AI] Unhandled Rejection: ${err.message}`);
-  server.close(() => process.exit(1));
+// Catch unhandled promise rejections
+process.on('unhandledRejection', (unhandledError) => {
+  console.error(`[AquaSense AI] Unhandled Rejection: ${unhandledError.message}`);
+  serverInstance.close(() => process.exit(1));
 });
 
-module.exports = app;
+export default application;
