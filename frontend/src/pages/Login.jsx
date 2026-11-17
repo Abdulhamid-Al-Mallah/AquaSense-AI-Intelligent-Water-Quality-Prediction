@@ -4,42 +4,47 @@ import { Droplet, ArrowRight, ShieldCheck, Zap, AlertCircle } from 'lucide-react
 import { useAuth } from '../context/AuthContext';
 
 export const Login = () => {
-  const [email, setEmail] = useState('');
+  const [emailAddress, setEmailAddress] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+  const handleLoginSubmit = async (event) => {
+    event.preventDefault();
+    setErrorMessage('');
+    setIsSubmitting(true);
+
     try {
-      await login(email, password);
+      await login(emailAddress, password);
       navigate('/');
-    } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Failed to login');
+    } catch (error) {
+      const displayMessage = error.response?.data?.error || error.message || 'Login failed. Please try again.';
+      setErrorMessage(displayMessage);
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  const handleQuickDemoLogin = () => {
-    setEmail('admin@aquasense.ai');
+  const handleQuickDemoFill = () => {
+    setEmailAddress('admin@aquasense.ai');
     setPassword('AdminPassword123!');
   };
 
   return (
     <div className="min-h-screen flex bg-slate-900 font-sans">
-      {/* Left Branding / Environmental Graphic Banner */}
+      {/* Left Environmental Branding Section */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 p-12 flex-col justify-between border-r border-slate-800">
         <div>
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-xl bg-sky-500 flex items-center justify-center shadow-lg shadow-sky-500/30">
               <Droplet className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-black text-white tracking-tight">AquaSense <span className="text-sky-400">AI</span></span>
+            <span className="text-2xl font-black text-white tracking-tight">
+              AquaSense <span className="text-sky-400">AI</span>
+            </span>
           </div>
 
           <div className="mt-20 max-w-lg">
@@ -51,7 +56,7 @@ export const Login = () => {
               Predictive Water Safety & Intelligent Chemical Remediation.
             </h1>
             <p className="mt-4 text-slate-400 text-base leading-relaxed">
-              Synthesizing 8 verified laboratory physical-chemical parameters with leak-free gradient boosted machine learning and regulatory WHO standard engines.
+              Evaluating 8 verified laboratory physical and chemical parameters with leakage-free gradient boosted machine learning and regulatory WHO standard engines.
             </p>
           </div>
         </div>
@@ -67,12 +72,12 @@ export const Login = () => {
           </div>
           <div>
             <p className="text-2xl font-bold text-indigo-400">&lt;50ms</p>
-            <p className="text-xs text-slate-400 mt-0.5">IPC Inference Latency</p>
+            <p className="text-xs text-slate-400 mt-0.5">Inference Latency</p>
           </div>
         </div>
       </div>
 
-      {/* Right Login Form */}
+      {/* Right Login Form Section */}
       <div className="flex-1 flex items-center justify-center p-8 bg-slate-900">
         <div className="w-full max-w-md bg-slate-950/80 border border-slate-800 rounded-2xl p-8 shadow-2xl backdrop-blur-sm">
           <div className="mb-6">
@@ -88,55 +93,59 @@ export const Login = () => {
             </div>
             <button
               type="button"
-              onClick={handleQuickDemoLogin}
+              onClick={handleQuickDemoFill}
               className="text-xs bg-sky-600 hover:bg-sky-500 text-white font-medium px-2.5 py-1 rounded-md transition-colors shadow-sm"
             >
-              Fill Demo Admin
+              Fill Demo Credentials
             </button>
           </div>
 
-          {error && (
+          {errorMessage && (
             <div className="mb-4 p-3 bg-rose-950/40 border border-rose-800/60 rounded-xl flex items-center space-x-2 text-rose-300 text-xs">
               <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{error}</span>
+              <span>{errorMessage}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Email Address</label>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                Email Address
+              </label>
               <input
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={emailAddress}
+                onChange={(event) => setEmailAddress(event.target.value)}
                 placeholder="analyst@aquasense.ai"
                 required
-                className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all"
+                className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Password</label>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                Password
+              </label>
               <input
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(event) => setPassword(event.target.value)}
                 placeholder="••••••••"
                 required
-                className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all"
+                className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all"
               />
             </div>
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={isSubmitting}
               className="w-full mt-2 py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-white font-semibold rounded-lg text-sm transition-all flex items-center justify-center space-x-2 shadow-lg shadow-sky-600/20 disabled:opacity-50"
             >
-              {loading ? (
+              {isSubmitting ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               ) : (
                 <>
-                  <span>Authenticate Session</span>
+                  <span>Sign In</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}

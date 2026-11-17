@@ -1,82 +1,104 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import api from '../services/api';
+import apiClient from '../services/api';
 
-const AuthContext = createContext();
+const AuthenticationContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('aquasense_token') || null);
-  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authToken, setAuthToken] = useState(localStorage.getItem('aquasense_token') || null);
+  const [isInitializing, setIsInitializing] = useState(true);
 
+  // Validate existing stored token and retrieve fresh user profile on startup
   useEffect(() => {
-    const fetchCurrentUser = async () => {
+    const checkExistingSession = async () => {
       const storedToken = localStorage.getItem('aquasense_token');
       if (!storedToken) {
-        setLoading(false);
+        setIsInitializing(false);
         return;
       }
 
       try {
-        const res = await api.get('/auth/me');
-        if (res.data && res.data.success) {
-          setUser(res.data.user);
-          localStorage.setItem('aquasense_user', JSON.stringify(res.data.user));
+        const response = await apiClient.get('/auth/me');
+        if (response.data && response.data.success) {
+          setCurrentUser(response.data.user);
+          localStorage.setItem('aquasense_user', JSON.stringify(response.data.user));
         }
-      } catch (err) {
-        console.error('Session validation error:', err);
+      } catch (sessionError) {
+        console.error('Session expired or invalid:', sessionError.message);
         logout();
       } finally {
-        setLoading(false);
+        setIsInitializing(false);
       }
     };
 
-    fetchCurrentUser();
+    checkExistingSession();
   }, []);
 
-  const login = async (email, password) => {
-    const res = await api.post('/auth/login', { email, password });
-    if (res.data && res.data.success) {
-      const { token: receivedToken, user: receivedUser } = res.data;
-      setToken(receivedToken);
-      setUser(receivedUser);
+  const login = async (emailAddress, password) => {
+    const response = await apiClient.post('/auth/login', {
+      email: emailAddress,
+      password: password
+    });
+
+    if (response.data && response.data.success) {
+      const { token: receivedToken, user: receivedUserData } = response.data;
+      setAuthToken(receivedToken);
+      setCurrentUser(receivedUserData);
       localStorage.setItem('aquasense_token', receivedToken);
-      localStorage.setItem('aquasense_user', JSON.stringify(receivedUser));
-      return receivedUser;
+      localStorage.setItem('aquasense_user', JSON.stringify(receivedUserData));
+      return receivedUserData;
     }
-    throw new Error(res.data?.error || 'Authentication failed');
+
+    throw new Error(response.data?.error || 'Login attempt failed.');
   };
 
-  const register = async (name, email, password) => {
-    const res = await api.post('/auth/register', { name, email, password });
-    if (res.data && res.data.success) {
-      const { token: receivedToken, user: receivedUser } = res.data;
-      setToken(receivedToken);
-      setUser(receivedUser);
+  const register = async (fullName, emailAddress, password) => {
+    const response = await apiClient.post('/auth/register', {
+      name: fullName,
+      email: emailAddress,
+      password: password
+    });
+
+    if (response.data && response.data.success) {
+      const { token: receivedToken, user: receivedUserData } = response.data;
+      setAuthToken(receivedToken);
+      setCurrentUser(receivedUserData);
       localStorage.setItem('aquasense_token', receivedToken);
-      localStorage.setItem('aquasense_user', JSON.stringify(receivedUser));
-      return receivedUser;
+      localStorage.setItem('aquasense_user', JSON.stringify(receivedUserData));
+      return receivedUserData;
     }
-    throw new Error(res.data?.error || 'Registration failed');
+
+    throw new Error(response.data?.error || 'Registration failed.');
   };
 
   const logout = () => {
-    setToken(null);
-    setUser(null);
+    setAuthToken(null);
+    setCurrentUser(null);
     localStorage.removeItem('aquasense_token');
     localStorage.removeItem('aquasense_user');
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, isAuthenticated: !!token }}>
+    <AuthenticationContext.Provider
+      value={{
+        user: currentUser,
+        token: authToken,
+        loading: isInitializing,
+        login: login,
+        register: register,
+        logout: logout,
+        isAuthenticated: Boolean(authToken)
+      }}
+    >
       {children}
-    </AuthContext.Provider>
+    </AuthenticationContext.Provider>
   );
 };
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
+  const context = useContext(AuthenticationContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth must be called inside an AuthProvider component.');
   }
   return context;
 };

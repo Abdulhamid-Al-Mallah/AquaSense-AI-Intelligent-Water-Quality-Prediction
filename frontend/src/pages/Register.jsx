@@ -1,28 +1,31 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Droplet, ArrowRight, AlertCircle, ShieldCheck } from 'lucide-react';
+import { Droplet, ArrowRight, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const Register = () => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [emailAddress, setEmailAddress] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const { register } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+  const handleRegisterSubmit = async (event) => {
+    event.preventDefault();
+    setErrorMessage('');
+    setIsSubmitting(true);
+
     try {
-      await register(name, email, password);
+      await register(fullName, emailAddress, password);
       navigate('/');
-    } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Registration failed');
+    } catch (error) {
+      const displayMessage = error.response?.data?.error || error.message || 'Registration failed.';
+      setErrorMessage(displayMessage);
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -34,37 +37,41 @@ export const Register = () => {
             <Droplet className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-white tracking-tight">Register Analyst</h2>
+            <h2 className="text-xl font-bold text-white tracking-tight">Register Analyst Profile</h2>
             <p className="text-xs text-slate-400">Join the AquaSense AI Decision Support Suite</p>
           </div>
         </div>
 
-        {error && (
+        {errorMessage && (
           <div className="mb-4 p-3 bg-rose-950/40 border border-rose-800/60 rounded-xl flex items-center space-x-2 text-rose-300 text-xs">
             <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
+            <span>{errorMessage}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleRegisterSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Full Name</label>
+            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+              Full Name
+            </label>
             <input
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Dr. Jane Doe"
+              value={fullName}
+              onChange={(event) => setFullName(event.target.value)}
+              placeholder="e.g. Dr. Jane Doe"
               required
               className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Email Address</label>
+            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+              Email Address
+            </label>
             <input
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={emailAddress}
+              onChange={(event) => setEmailAddress(event.target.value)}
               placeholder="jane.doe@lab.org"
               required
               className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all"
@@ -72,12 +79,14 @@ export const Register = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Password</label>
+            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+              Password
+            </label>
             <input
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Min 6 characters"
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Minimum 6 characters"
               required
               minLength={6}
               className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all"
@@ -86,14 +95,14 @@ export const Register = () => {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={isSubmitting}
             className="w-full mt-2 py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-white font-semibold rounded-lg text-sm transition-all flex items-center justify-center space-x-2 shadow-lg shadow-sky-600/20 disabled:opacity-50"
           >
-            {loading ? (
+            {isSubmitting ? (
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
               <>
-                <span>Create Lab Account</span>
+                <span>Create Account</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
@@ -101,7 +110,7 @@ export const Register = () => {
         </form>
 
         <p className="mt-6 text-center text-xs text-slate-400">
-          Already registered?{' '}
+          Already have an account?{' '}
           <Link to="/login" className="text-sky-400 hover:underline font-semibold">
             Sign In here
           </Link>

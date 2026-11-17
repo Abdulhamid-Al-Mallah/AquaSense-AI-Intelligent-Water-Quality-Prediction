@@ -1,16 +1,16 @@
 const WaterRecord = require('../models/WaterRecord');
 
 /**
- * @desc    Get KPI Summary Analytics
- * @route   GET /api/analytics/summary
- * @access  Public / Protected
+ * Returns overall statistical summary (KPIs) of all water quality samples tested.
+ * Route: GET /api/analytics/summary
  */
-const getSummary = async (req, res, next) => {
+const getSummary = async (request, response, next) => {
   try {
-    const totalTests = await WaterRecord.countDocuments();
+    const totalSamplesTested = await WaterRecord.countDocuments();
 
-    if (totalTests === 0) {
-      return res.status(200).json({
+    // If database is empty, return a clean default summary
+    if (totalSamplesTested === 0) {
+      return response.status(200).json({
         success: true,
         data: {
           totalTests: 0,
@@ -23,45 +23,52 @@ const getSummary = async (req, res, next) => {
       });
     }
 
-    // Aggregation for overall averages and risk status counts
-    const statsAgg = await WaterRecord.aggregate([
+    // Calculate fleet-wide averages and status counts using MongoDB aggregation
+    const statisticsAggregation = await WaterRecord.aggregate([
       {
         $group: {
           _id: null,
-          avgDrinkability: { $avg: '$drinkabilityScore' },
+          averageDrinkability: { $avg: '$drinkabilityScore' },
           criticalCount: {
-            $sum: { $cond: [{ $eq: ['$riskStatus', 'Critical'] }, 1, 0] }
+            $sum: {
+              $cond: [{ $eq: ['$riskStatus', 'Critical'] }, 1, 0]
+            }
           },
           moderateCount: {
-            $sum: { $cond: [{ $eq: ['$riskStatus', 'Moderate'] }, 1, 0] }
+            $sum: {
+              $cond: [{ $eq: ['$riskStatus', 'Moderate'] }, 1, 0]
+            }
           },
           safeCount: {
-            $sum: { $cond: [{ $eq: ['$riskStatus', 'Safe'] }, 1, 0] }
+            $sum: {
+              $cond: [{ $eq: ['$riskStatus', 'Safe'] }, 1, 0]
+            }
           }
         }
       }
     ]);
 
-    const latestRecord = await WaterRecord.findOne()
+    // Find the single most recent water test record
+    const latestTestRecord = await WaterRecord.findOne()
       .sort({ timestamp: -1 })
       .populate('submittedBy', 'name email role');
 
-    const summary = statsAgg[0] || {
-      avgDrinkability: 0,
+    const calculatedStats = statisticsAggregation[0] || {
+      averageDrinkability: 0,
       criticalCount: 0,
       moderateCount: 0,
       safeCount: 0
     };
 
-    return res.status(200).json({
+    return response.status(200).json({
       success: true,
       data: {
-        totalTests,
-        averageDrinkability: Number(summary.avgDrinkability.toFixed(2)),
-        criticalCount: summary.criticalCount,
-        moderateCount: summary.moderateCount,
-        safeCount: summary.safeCount,
-        latestRecord
+        totalTests: totalSamplesTested,
+        averageDrinkability: Number(calculatedStats.averageDrinkability.toFixed(2)),
+        criticalCount: calculatedStats.criticalCount,
+        moderateCount: calculatedStats.moderateCount,
+        safeCount: calculatedStats.safeCount,
+        latestRecord: latestTestRecord
       }
     });
   } catch (error) {
@@ -70,20 +77,19 @@ const getSummary = async (req, res, next) => {
 };
 
 /**
- * @desc    Get Time-Series Trends (Daily Aggregations for Recharts)
- * @route   GET /api/analytics/trends
- * @access  Public / Protected
+ * Returns daily trend averages over time (tailored for time-series charts).
+ * Route: GET /api/analytics/trends
  */
-const getTrends = async (req, res, next) => {
+const getTrends = async (request, response, next) => {
   try {
-    const { days = 30 } = req.query;
-    const dateLimit = new Date();
-    dateLimit.setDate(dateLimit.getDate() - Number(days));
+    const numberOfDays = Number(request.query.days) || 30;
+    const pastDateCutoff = new Date();
+    pastDateCutoff.setDate(pastDateCutoff.getDate() - numberOfDays);
 
-    const trends = await WaterRecord.aggregate([
+    const dailyTrends = await WaterRecord.aggregate([
       {
         $match: {
-          timestamp: { $gte: dateLimit }
+          timestamp: { $gte: pastDateCutoff }
         }
       },
       {
@@ -91,44 +97,41 @@ const getTrends = async (req, res, next) => {
           _id: {
             $dateToString: { format: '%Y-%m-%d', date: '$timestamp' }
           },
-          date: {
-            $first: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } }
-          },
-          avgDrinkability: { $avg: '$drinkabilityScore' },
-          avgPh: { $avg: '$ph' },
-          avgTurbidity: { $avg: '$turbidity' },
-          avgDO: { $avg: '$do' },
-          avgBOD: { $avg: '$bod' },
-          avgLead: { $avg: '$lead' },
-          avgMercury: { $avg: '$mercury' },
-          avgArsenic: { $avg: '$arsenic' },
-          count: { $sum: 1 }
+          averageDrinkability: { $avg: '$drinkabilityScore' },
+          averagePh: { $avg: '$ph' },
+          averageTurbidity: { $avg: '$turbidity' },
+          averageDissolvedOxygen: { $avg: '$do' },
+          averageBiochemicalDemand: { $avg: '$bod' },
+          averageLead: { $avg: '$lead' },
+          averageMercury: { $avg: '$mercury' },
+          averageArsenic: { $avg: '$arsenic' },
+          samplesCount: { $sum: 1 }
         }
       },
       {
-        $sort: { _id: 1 } // Chronological order
+        $sort: { _id: 1 } // Sort chronologically from oldest to newest
       },
       {
         $project: {
           _id: 0,
           date: '$_id',
-          avgDrinkability: { $round: ['$avgDrinkability', 2] },
-          avgPh: { $round: ['$avgPh', 2] },
-          avgTurbidity: { $round: ['$avgTurbidity', 2] },
-          avgDO: { $round: ['$avgDO', 2] },
-          avgBOD: { $round: ['$avgBOD', 2] },
-          avgLead: { $round: ['$avgLead', 4] },
-          avgMercury: { $round: ['$avgMercury', 4] },
-          avgArsenic: { $round: ['$avgArsenic', 4] },
-          count: 1
+          avgDrinkability: { $round: ['$averageDrinkability', 2] },
+          avgPh: { $round: ['$averagePh', 2] },
+          avgTurbidity: { $round: ['$averageTurbidity', 2] },
+          avgDO: { $round: ['$averageDissolvedOxygen', 2] },
+          avgBOD: { $round: ['$averageBiochemicalDemand', 2] },
+          avgLead: { $round: ['$averageLead', 4] },
+          avgMercury: { $round: ['$averageMercury', 4] },
+          avgArsenic: { $round: ['$averageArsenic', 4] },
+          count: '$samplesCount'
         }
       }
     ]);
 
-    return res.status(200).json({
+    return response.status(200).json({
       success: true,
-      count: trends.length,
-      data: trends
+      count: dailyTrends.length,
+      data: dailyTrends
     });
   } catch (error) {
     next(error);
@@ -136,38 +139,42 @@ const getTrends = async (req, res, next) => {
 };
 
 /**
- * @desc    Get Aggregations by Location (for Bar / Breakdown Charts)
- * @route   GET /api/analytics/locations
- * @access  Public / Protected
+ * Returns breakdown statistics grouped by monitoring station/location (for bar charts).
+ * Route: GET /api/analytics/locations
  */
-const getLocations = async (req, res, next) => {
+const getLocations = async (request, response, next) => {
   try {
-    const locations = await WaterRecord.aggregate([
+    const locationSummaries = await WaterRecord.aggregate([
       {
         $group: {
           _id: '$location',
-          location: { $first: '$location' },
-          avgDrinkability: { $avg: '$drinkabilityScore' },
+          averageDrinkability: { $avg: '$drinkabilityScore' },
           totalTests: { $sum: 1 },
           criticalCount: {
-            $sum: { $cond: [{ $eq: ['$riskStatus', 'Critical'] }, 1, 0] }
+            $sum: {
+              $cond: [{ $eq: ['$riskStatus', 'Critical'] }, 1, 0]
+            }
           },
           moderateCount: {
-            $sum: { $cond: [{ $eq: ['$riskStatus', 'Moderate'] }, 1, 0] }
+            $sum: {
+              $cond: [{ $eq: ['$riskStatus', 'Moderate'] }, 1, 0]
+            }
           },
           safeCount: {
-            $sum: { $cond: [{ $eq: ['$riskStatus', 'Safe'] }, 1, 0] }
+            $sum: {
+              $cond: [{ $eq: ['$riskStatus', 'Safe'] }, 1, 0]
+            }
           }
         }
       },
       {
-        $sort: { totalTests: -1 }
+        $sort: { totalTests: -1 } // Highest volume stations first
       },
       {
         $project: {
           _id: 0,
           location: '$_id',
-          avgDrinkability: { $round: ['$avgDrinkability', 2] },
+          avgDrinkability: { $round: ['$averageDrinkability', 2] },
           totalTests: 1,
           criticalCount: 1,
           moderateCount: 1,
@@ -176,10 +183,10 @@ const getLocations = async (req, res, next) => {
       }
     ]);
 
-    return res.status(200).json({
+    return response.status(200).json({
       success: true,
-      count: locations.length,
-      data: locations
+      count: locationSummaries.length,
+      data: locationSummaries
     });
   } catch (error) {
     next(error);

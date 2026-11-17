@@ -7,21 +7,22 @@ import joblib
 import pandas as pd
 import numpy as np
 
-def main():
+def run_prediction():
     try:
-        # 1. Parse JSON input from command line arguments
+        # Step 1: Ensure arguments are provided
         if len(sys.argv) < 2:
-            print(json.dumps({
+            error_message = {
                 "success": False,
-                "error": "Missing input argument. Expected JSON string of water parameters."
-            }))
+                "error": "Missing input argument. Please provide a JSON string of water parameters."
+            }
+            print(json.dumps(error_message))
             sys.exit(1)
 
-        input_json_str = sys.argv[1]
-        data = json.loads(input_json_str)
+        input_json_string = sys.argv[1]
+        input_data = json.loads(input_json_string)
 
-        # 2. Extract 8 certified lab features in exact required order
-        feature_keys = [
+        # Step 2: The exact 8 physical and chemical parameters required by the trained model
+        required_parameters = [
             'pH',
             'Turbidity',
             'Temperature',
@@ -32,8 +33,8 @@ def main():
             'Arsenic'
         ]
 
-        # Support both short keys and full dataset key names
-        alt_keys = {
+        # Alternative spelling mappings to handle various frontend key conventions
+        alternative_key_names = {
             'Turbidity': ['Turbidity (NTU)', 'turbidity'],
             'Temperature': ['Temperature (°C)', 'temperature'],
             'DO': ['DO (mg/L)', 'do', 'dissolvedOxygen'],
@@ -44,66 +45,68 @@ def main():
             'pH': ['ph', 'PH']
         }
 
-        extracted_values = []
-        for key in feature_keys:
-            val = None
-            if key in data:
-                val = data[key]
+        # Extract values in the exact feature order
+        ordered_feature_values = []
+        for parameter_name in required_parameters:
+            found_value = None
+            if parameter_name in input_data:
+                found_value = input_data[parameter_name]
             else:
-                for alt in alt_keys.get(key, []):
-                    if alt in data:
-                        val = data[alt]
+                for alias in alternative_key_names.get(parameter_name, []):
+                    if alias in input_data:
+                        found_value = input_data[alias]
                         break
 
-            if val is None:
-                raise ValueError(f"Missing required parameter: '{key}'")
-            extracted_values.append(float(val))
+            if found_value is None:
+                raise ValueError(f"Required water parameter '{parameter_name}' was not provided.")
+            
+            ordered_feature_values.append(float(found_value))
 
-        # 3. Load pre-trained Scaler and Model
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        scaler_path = os.path.join(current_dir, "scaler.pkl")
-        model_path = os.path.join(current_dir, "model.pkl")
+        # Step 3: Load serialized scaler and model artifacts
+        current_script_directory = os.path.dirname(os.path.abspath(__file__))
+        scaler_file_path = os.path.join(current_script_directory, "scaler.pkl")
+        model_file_path = os.path.join(current_script_directory, "model.pkl")
 
-        if not os.path.exists(scaler_path) or not os.path.exists(model_path):
-            raise FileNotFoundError("Model or Scaler pickle file not found in ml-predict directory.")
+        if not os.path.exists(scaler_file_path) or not os.path.exists(model_file_path):
+            raise FileNotFoundError("Model or Scaler (.pkl) files not found in backend/ml-predict directory.")
 
-        scaler = joblib.load(scaler_path)
-        model = joblib.load(model_path)
+        scaler = joblib.load(scaler_file_path)
+        trained_model = joblib.load(model_file_path)
 
-        # 4. Scale inputs & calculate probability
-        features_array = np.array([extracted_values])
-        features_scaled = scaler.transform(features_array)
+        # Step 4: Scale features and calculate continuous drinkability score
+        features_matrix = np.array([ordered_feature_values])
+        scaled_features = scaler.transform(features_matrix)
 
-        # Predict probability across classes [0: Clean, 1: Moderate, 2: Polluted]
-        probabilities = model.predict_proba(features_scaled)[0]
+        # Probabilities across [Class 0: Clean, Class 1: Moderate, Class 2: Polluted]
+        class_probabilities = trained_model.predict_proba(scaled_features)[0]
 
-        # Weights: Class 0 = 1.0 (100% drinkable), Class 1 = 0.5 (50%), Class 2 = 0.0 (0%)
-        weights = np.array([1.0, 0.5, 0.0])
-        drinkability_score = float(np.dot(probabilities, weights) * 100)
-        drinkability_score = round(max(0.0, min(100.0, drinkability_score)), 2)
+        # Class weights: Class 0 = 100% clean, Class 1 = 50% clean, Class 2 = 0% clean
+        drinkability_weights = np.array([1.0, 0.5, 0.0])
+        raw_drinkability_score = float(np.dot(class_probabilities, drinkability_weights) * 100.0)
+        final_drinkability_score = round(max(0.0, min(100.0, raw_drinkability_score)), 2)
 
-        predicted_class = int(model.predict(features_scaled)[0])
+        predicted_class_integer = int(trained_model.predict(scaled_features)[0])
 
-        # 5. Output pure JSON response for Node.js child_process
-        result = {
+        # Step 5: Output JSON string for Node.js child process to read from stdout
+        response_data = {
             "success": True,
-            "drinkabilityScore": drinkability_score,
-            "predictedClass": predicted_class,
+            "drinkabilityScore": final_drinkability_score,
+            "predictedClass": predicted_class_integer,
             "classProbabilities": {
-                "class0_clean": round(float(probabilities[0]), 4),
-                "class1_moderate": round(float(probabilities[1]), 4),
-                "class2_polluted": round(float(probabilities[2]), 4)
+                "class0_clean": round(float(class_probabilities[0]), 4),
+                "class1_moderate": round(float(class_probabilities[1]), 4),
+                "class2_polluted": round(float(class_probabilities[2]), 4)
             }
         }
-        print(json.dumps(result))
+        print(json.dumps(response_data))
 
-    except Exception as e:
-        error_res = {
+    except Exception as general_error:
+        failure_response = {
             "success": False,
-            "error": str(e)
+            "error": str(general_error)
         }
-        print(json.dumps(error_res))
+        print(json.dumps(failure_response))
         sys.exit(1)
 
 if __name__ == "__main__":
-    main()
+    run_prediction()

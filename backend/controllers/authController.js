@@ -2,57 +2,56 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
 /**
- * Generate Signed JWT Token
+ * Creates a signed JSON Web Token (JWT) valid for 30 days.
+ * 
+ * @param {string} userId - Database ID of the user
+ * @returns {string} Signed JWT token
  */
-const generateToken = (id) => {
-  return jwt.sign(
-    { id },
-    process.env.JWT_SECRET || 'aquasense_jwt_secret_dev_key_2026_seng491',
-    { expiresIn: '30d' }
-  );
-};
+function createAuthenticationToken(userId) {
+  const secretKey = process.env.JWT_SECRET || 'aquasense_jwt_secret_dev_key_2026_seng491';
+  return jwt.sign({ id: userId }, secretKey, { expiresIn: '30d' });
+}
 
 /**
- * @desc    Register a new user
- * @route   POST /api/auth/register
- * @access  Public
+ * Register a new user account.
+ * Route: POST /api/auth/register
  */
-const registerUser = async (req, res, next) => {
+const registerUser = async (request, response, next) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password } = request.body;
 
     if (!name || !email || !password) {
-      return res.status(400).json({
+      return response.status(400).json({
         success: false,
-        error: 'Please provide name, email, and password'
+        error: 'Please provide full name, email address, and password.'
       });
     }
 
-    const userExists = await User.findOne({ email });
-    if (userExists) {
-      return res.status(400).json({
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return response.status(400).json({
         success: false,
-        error: 'A user with this email address already exists'
+        error: 'An account with this email address already exists.'
       });
     }
 
-    const user = await User.create({
-      name,
-      email,
+    const newUser = await User.create({
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
       password,
       role: 'analyst'
     });
 
-    const token = generateToken(user._id);
+    const authToken = createAuthenticationToken(newUser._id);
 
-    return res.status(201).json({
+    return response.status(201).json({
       success: true,
-      token,
+      token: authToken,
       user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
+        _id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role
       }
     });
   } catch (error) {
@@ -61,47 +60,47 @@ const registerUser = async (req, res, next) => {
 };
 
 /**
- * @desc    Authenticate user & get token
- * @route   POST /api/auth/login
- * @access  Public
+ * Log in an existing user with email and password.
+ * Route: POST /api/auth/login
  */
-const loginUser = async (req, res, next) => {
+const loginUser = async (request, response, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = request.body;
 
     if (!email || !password) {
-      return res.status(400).json({
+      return response.status(400).json({
         success: false,
-        error: 'Please provide an email and password'
+        error: 'Please enter both your email address and password.'
       });
     }
 
-    const user = await User.findOne({ email }).select('+password');
-    if (!user) {
-      return res.status(401).json({
+    // Lookup user and explicitly include password for bcrypt comparison
+    const userRecord = await User.findOne({ email: email.trim().toLowerCase() }).select('+password');
+    if (!userRecord) {
+      return response.status(401).json({
         success: false,
-        error: 'Invalid credentials'
+        error: 'Invalid email address or password.'
       });
     }
 
-    const isMatch = await user.matchPassword(password);
-    if (!isMatch) {
-      return res.status(401).json({
+    const isPasswordCorrect = await userRecord.matchPassword(password);
+    if (!isPasswordCorrect) {
+      return response.status(401).json({
         success: false,
-        error: 'Invalid credentials'
+        error: 'Invalid email address or password.'
       });
     }
 
-    const token = generateToken(user._id);
+    const authToken = createAuthenticationToken(userRecord._id);
 
-    return res.status(200).json({
+    return response.status(200).json({
       success: true,
-      token,
+      token: authToken,
       user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
+        _id: userRecord._id,
+        name: userRecord.name,
+        email: userRecord.email,
+        role: userRecord.role
       }
     });
   } catch (error) {
@@ -110,16 +109,15 @@ const loginUser = async (req, res, next) => {
 };
 
 /**
- * @desc    Get current logged in user profile
- * @route   GET /api/auth/me
- * @access  Private
+ * Returns current logged-in user profile from verified token.
+ * Route: GET /api/auth/me
  */
-const getMe = async (req, res, next) => {
+const getMe = async (request, response, next) => {
   try {
-    const user = await User.findById(req.user._id);
-    return res.status(200).json({
+    const currentUser = await User.findById(request.user._id);
+    return response.status(200).json({
       success: true,
-      user
+      user: currentUser
     });
   } catch (error) {
     next(error);
@@ -127,23 +125,24 @@ const getMe = async (req, res, next) => {
 };
 
 /**
- * Helper to seed a default admin user on startup or on demand
+ * Helper function that automatically creates a default test account if none exists.
+ * Run automatically on server startup.
  */
 const seedAdmin = async () => {
   try {
-    const adminEmail = 'admin@aquasense.ai';
-    const existingAdmin = await User.findOne({ email: adminEmail });
-    if (!existingAdmin) {
+    const defaultEmail = 'admin@aquasense.ai';
+    const alreadyExists = await User.findOne({ email: defaultEmail });
+    if (!alreadyExists) {
       await User.create({
         name: 'AquaSense Admin',
-        email: adminEmail,
+        email: defaultEmail,
         password: 'AdminPassword123!',
         role: 'analyst'
       });
-      console.log(`[AquaSense AI] Default admin created: ${adminEmail} / AdminPassword123!`);
+      console.log(`[AquaSense AI] Default demo account ready: ${defaultEmail} / AdminPassword123!`);
     }
-  } catch (error) {
-    console.warn(`[AquaSense AI] Seed admin notice: ${error.message}`);
+  } catch (seedError) {
+    console.warn(`[AquaSense AI] Demo account setup notice: ${seedError.message}`);
   }
 };
 

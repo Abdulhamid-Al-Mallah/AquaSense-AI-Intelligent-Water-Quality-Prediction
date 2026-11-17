@@ -1,124 +1,174 @@
 /**
- * AquaSense AI - Decision-Support & Regulatory Engine
- * Evaluates laboratory chemical & physical parameters against WHO/EPA drinking water standards.
- * Generates automated warnings and concrete remediation steps.
+ * AquaSense AI - Water Quality Advisory Engine
+ * 
+ * Compares laboratory parameters against World Health Organization (WHO)
+ * and Environmental Protection Agency (EPA) drinking water guidelines.
+ * Returns human-readable warnings and specific water treatment recommendations.
  */
 
-// WHO / EPA Standard Reference Thresholds
-const WHO_STANDARDS = {
-  PH_MIN: 6.5,
-  PH_MAX: 8.5,
-  TURBIDITY_MAX: 5.0, // NTU
-  DO_MIN: 5.0,        // mg/L (Minimum dissolved oxygen for healthy water)
-  BOD_MAX: 5.0,       // mg/L (Biochemical oxygen demand)
-  LEAD_MAX: 0.01,     // mg/L (10 ppb)
-  MERCURY_MAX: 0.006, // mg/L (6 ppb)
-  ARSENIC_MAX: 0.01   // mg/L (10 ppb)
+// Official WHO & EPA Maximum Acceptable Thresholds for Safe Drinking Water
+const WATER_SAFETY_LIMITS = {
+  MINIMUM_SAFE_PH: 6.5,
+  MAXIMUM_SAFE_PH: 8.5,
+  MAXIMUM_TURBIDITY_NTU: 5.0,
+  MINIMUM_DISSOLVED_OXYGEN_MG_L: 5.0,
+  MAXIMUM_BIOCHEMICAL_DEMAND_MG_L: 5.0,
+  MAXIMUM_LEAD_MG_L: 0.010,    // 10 micrograms per liter
+  MAXIMUM_MERCURY_MG_L: 0.006, // 6 micrograms per liter
+  MAXIMUM_ARSENIC_MG_L: 0.010  // 10 micrograms per liter
 };
 
 /**
- * Analyze laboratory parameters and produce regulatory warnings and remediation advice.
- * @param {Object} params - Water laboratory parameters
- * @returns {Object} { warnings: string[], recommendations: string[], riskStatus: string }
+ * Analyzes water parameters and produces human-friendly warnings and treatment steps.
+ * 
+ * @param {Object} parameters - The 8 lab water measurements
+ * @param {number|null} drinkabilityScore - Optional continuous prediction score (0 to 100)
+ * @returns {Object} { warnings, recommendations, riskStatus }
  */
-function analyzeParameters(params, drinkabilityScore = null) {
-  const warnings = [];
-  const recommendations = [];
+function analyzeParameters(parameters, drinkabilityScore = null) {
+  const detectedWarnings = [];
+  const actionRecommendations = [];
 
-  const ph = Number(params.ph);
-  const turbidity = Number(params.turbidity);
-  const temperature = Number(params.temperature);
-  const doVal = Number(params.do);
-  const bod = Number(params.bod);
-  const lead = Number(params.lead);
-  const mercury = Number(params.mercury);
-  const arsenic = Number(params.arsenic);
+  const phValue = Number(parameters.ph);
+  const turbidityValue = Number(parameters.turbidity);
+  const temperatureValue = Number(parameters.temperature);
+  const dissolvedOxygenValue = Number(parameters.do);
+  const biologicalOxygenDemand = Number(parameters.bod);
+  const leadConcentration = Number(parameters.lead);
+  const mercuryConcentration = Number(parameters.mercury);
+  const arsenicConcentration = Number(parameters.arsenic);
 
-  // 1. pH Assessment
-  if (ph < WHO_STANDARDS.PH_MIN) {
-    warnings.push(`Acidic pH alert (${ph.toFixed(2)}): Below WHO recommended lower limit of ${WHO_STANDARDS.PH_MIN}.`);
-    recommendations.push("Implement pH neutralization using sodium carbonate (soda ash) injection or calcite/corosex neutralizing filters to prevent pipe corrosion and heavy metal leaching.");
-  } else if (ph > WHO_STANDARDS.PH_MAX) {
-    warnings.push(`Alkaline pH alert (${ph.toFixed(2)}): Exceeds WHO recommended upper limit of ${WHO_STANDARDS.PH_MAX}.`);
-    recommendations.push("Acid injection neutralization (dilute sulfuric or hydrochloric acid feed) to restore pH to the neutral 7.0–7.5 range.");
+  // 1. pH Level Evaluation
+  if (phValue < WATER_SAFETY_LIMITS.MINIMUM_SAFE_PH) {
+    detectedWarnings.push(
+      `Acidic Water Alert (pH ${phValue.toFixed(2)}): Below the WHO minimum safe threshold of ${WATER_SAFETY_LIMITS.MINIMUM_SAFE_PH}.`
+    );
+    actionRecommendations.push(
+      'Perform pH neutralization using a calcite/corosex filter or sodium carbonate (soda ash) injection to stop pipe corrosion and metal leaching.'
+    );
+  } else if (phValue > WATER_SAFETY_LIMITS.MAXIMUM_SAFE_PH) {
+    detectedWarnings.push(
+      `Alkaline Water Alert (pH ${phValue.toFixed(2)}): Exceeds the WHO maximum safe threshold of ${WATER_SAFETY_LIMITS.MAXIMUM_SAFE_PH}.`
+    );
+    actionRecommendations.push(
+      'Inject food-grade neutralizing acid (such as dilute citric or hydrochloric acid) to bring the water to a neutral 7.0–7.5 range.'
+    );
   }
 
-  // 2. Turbidity Assessment
-  if (turbidity > WHO_STANDARDS.TURBIDITY_MAX) {
-    warnings.push(`High Turbidity (${turbidity.toFixed(2)} NTU): Exceeds standard drinking limit of ${WHO_STANDARDS.TURBIDITY_MAX} NTU.`);
-    recommendations.push("Deploy rapid sand filtration combined with chemical coagulation/flocculation (alum or polyaluminum chloride) to clarify suspended solids before disinfection.");
+  // 2. Turbidity (Clarity) Evaluation
+  if (turbidityValue > WATER_SAFETY_LIMITS.MAXIMUM_TURBIDITY_NTU) {
+    detectedWarnings.push(
+      `High Cloudiness / Turbidity (${turbidityValue.toFixed(2)} NTU): Exceeds drinking standard of ${WATER_SAFETY_LIMITS.MAXIMUM_TURBIDITY_NTU} NTU.`
+    );
+    actionRecommendations.push(
+      'Apply chemical coagulation (alum or polyaluminum chloride) followed by rapid sand or multimedia filtration to clarify suspended particles.'
+    );
   }
 
-  // 3. Dissolved Oxygen (DO) Assessment
-  if (doVal < WHO_STANDARDS.DO_MIN) {
-    warnings.push(`Low Dissolved Oxygen (${doVal.toFixed(2)} mg/L): Below the healthy guideline of ${WHO_STANDARDS.DO_MIN} mg/L, indicating stagnation or organic decay.`);
-    recommendations.push("Introduce mechanical cascade aeration or diffused bubble aerators to elevate dissolved oxygen and reduce unpleasant taste/odors.");
+  // 3. Dissolved Oxygen (DO) Evaluation
+  if (dissolvedOxygenValue < WATER_SAFETY_LIMITS.MINIMUM_DISSOLVED_OXYGEN_MG_L) {
+    detectedWarnings.push(
+      `Low Dissolved Oxygen (${dissolvedOxygenValue.toFixed(2)} mg/L): Below the healthy limit of ${WATER_SAFETY_LIMITS.MINIMUM_DISSOLVED_OXYGEN_MG_L} mg/L, indicating stagnation or organic breakdown.`
+    );
+    actionRecommendations.push(
+      'Implement cascade or diffused bubble aeration to raise dissolved oxygen levels and eliminate sulfurous odors.'
+    );
   }
 
-  // 4. Biochemical Oxygen Demand (BOD) Assessment
-  if (bod > WHO_STANDARDS.BOD_MAX) {
-    warnings.push(`Elevated Biochemical Oxygen Demand (${bod.toFixed(2)} mg/L): Above safety threshold of ${WHO_STANDARDS.BOD_MAX} mg/L, suggesting organic wastewater contamination.`);
-    recommendations.push("Apply biological activated sludge or advanced oxidation processes (UV/Ozone/Peroxide) to degrade residual organic pollutants.");
+  // 4. Biochemical Oxygen Demand (BOD) Evaluation
+  if (biologicalOxygenDemand > WATER_SAFETY_LIMITS.MAXIMUM_BIOCHEMICAL_DEMAND_MG_L) {
+    detectedWarnings.push(
+      `High Organic Load (BOD ${biologicalOxygenDemand.toFixed(2)} mg/L): Exceeds safety guideline of ${WATER_SAFETY_LIMITS.MAXIMUM_BIOCHEMICAL_DEMAND_MG_L} mg/L, indicating organic runoff or wastewater.`
+    );
+    actionRecommendations.push(
+      'Deploy biological filtration or advanced oxidation processes (UV light with hydrogen peroxide/ozone) to degrade organic pollutants.'
+    );
   }
 
-  // 5. Heavy Metals: Lead
-  if (lead > WHO_STANDARDS.LEAD_MAX) {
-    warnings.push(`Dangerous Lead Contamination (${lead.toFixed(4)} mg/L): Exceeds strict WHO maximum permissible level of ${WHO_STANDARDS.LEAD_MAX} mg/L.`);
-    recommendations.push("Install industrial Reverse Osmosis (RO) membranes or specialized lead-selective ion-exchange resin filtration systems immediately.");
+  // 5. Heavy Metal: Lead Evaluation
+  if (leadConcentration > WATER_SAFETY_LIMITS.MAXIMUM_LEAD_MG_L) {
+    detectedWarnings.push(
+      `Hazardous Lead Toxicity (${leadConcentration.toFixed(4)} mg/L): Exceeds the strict WHO maximum limit of ${WATER_SAFETY_LIMITS.MAXIMUM_LEAD_MG_L} mg/L.`
+    );
+    actionRecommendations.push(
+      'Immediately pass water through high-rejection Reverse Osmosis (RO) membranes or lead-selective ion-exchange resin filters.'
+    );
   }
 
-  // 6. Heavy Metals: Mercury
-  if (mercury > WHO_STANDARDS.MERCURY_MAX) {
-    warnings.push(`Critical Mercury Toxicity (${mercury.toFixed(4)} mg/L): Exceeds WHO safety threshold of ${WHO_STANDARDS.MERCURY_MAX} mg/L.`);
-    recommendations.push("Deploy Granular Activated Carbon (GAC) pre-treatment followed by high-rejection Reverse Osmosis (RO) to eliminate toxic mercury ions.");
+  // 6. Heavy Metal: Mercury Evaluation
+  if (mercuryConcentration > WATER_SAFETY_LIMITS.MAXIMUM_MERCURY_MG_L) {
+    detectedWarnings.push(
+      `Critical Mercury Toxicity (${mercuryConcentration.toFixed(4)} mg/L): Exceeds the safe drinking threshold of ${WATER_SAFETY_LIMITS.MAXIMUM_MERCURY_MG_L} mg/L.`
+    );
+    actionRecommendations.push(
+      'Deploy granular activated carbon (GAC) filtration coupled with reverse osmosis to eliminate dissolved toxic mercury compounds.'
+    );
   }
 
-  // 7. Heavy Metals: Arsenic
-  if (arsenic > WHO_STANDARDS.ARSENIC_MAX) {
-    warnings.push(`Critical Arsenic Contamination (${arsenic.toFixed(4)} mg/L): Exceeds WHO limit of ${WHO_STANDARDS.ARSENIC_MAX} mg/L.`);
-    recommendations.push("Employ activated alumina adsorption filters or ferric chloride co-precipitation to strip arsenic compounds from the supply.");
+  // 7. Heavy Metal: Arsenic Evaluation
+  if (arsenicConcentration > WATER_SAFETY_LIMITS.MAXIMUM_ARSENIC_MG_L) {
+    detectedWarnings.push(
+      `Dangerous Arsenic Contamination (${arsenicConcentration.toFixed(4)} mg/L): Exceeds the maximum permissible limit of ${WATER_SAFETY_LIMITS.MAXIMUM_ARSENIC_MG_L} mg/L.`
+    );
+    actionRecommendations.push(
+      'Use activated alumina adsorption media or ferric chloride co-precipitation to extract arsenic ions from the supply.'
+    );
   }
 
-  // 8. Temperature considerations
-  if (temperature > 30) {
-    warnings.push(`Elevated Water Temperature (${temperature.toFixed(1)}°C): Promotes microbial proliferation and reduces dissolved oxygen solubility.`);
-    recommendations.push("Protect storage reservoirs with solar-reflective thermal insulation and ensure continuous chlorination residual.");
+  // 8. Water Temperature Consideration
+  if (temperatureValue > 30) {
+    detectedWarnings.push(
+      `Elevated Water Temperature (${temperatureValue.toFixed(1)}°C): Encourages microbial growth and reduces oxygen saturation.`
+    );
+    actionRecommendations.push(
+      'Ensure proper thermal shading for storage tanks and maintain continuous disinfection residual.'
+    );
   }
 
-  // Fallback if pristine
-  if (warnings.length === 0) {
-    warnings.push("All physical and chemical parameters are compliant with WHO drinking standards.");
-    recommendations.push("Maintain standard inline multi-barrier disinfection (UV radiation or routine chlorination) and scheduled periodic testing.");
+  // If water is completely clean and complies with all thresholds
+  if (detectedWarnings.length === 0) {
+    detectedWarnings.push('All chemical and physical parameters comply with WHO safe drinking standards.');
+    actionRecommendations.push('Maintain regular monitoring and standard routine UV or chlorination disinfection.');
   }
 
-  // Calculate Risk Status based on project specification:
-  // 'Safe' for >= 75, 'Moderate' for 40-74.9, 'Critical' for < 40
-  let riskStatus = 'Safe';
+  // Determine overall risk category:
+  // Safe: 75% to 100% | Moderate: 40% to 74.9% | Critical: Below 40%
+  let calculatedRiskStatus = 'Safe';
   if (drinkabilityScore !== null) {
     if (drinkabilityScore >= 75) {
-      riskStatus = 'Safe';
+      calculatedRiskStatus = 'Safe';
     } else if (drinkabilityScore >= 40) {
-      riskStatus = 'Moderate';
+      calculatedRiskStatus = 'Moderate';
     } else {
-      riskStatus = 'Critical';
+      calculatedRiskStatus = 'Critical';
     }
   } else {
-    // If score not yet provided, compute initial heuristic
-    if (lead > WHO_STANDARDS.LEAD_MAX || mercury > WHO_STANDARDS.MERCURY_MAX || arsenic > WHO_STANDARDS.ARSENIC_MAX) {
-      riskStatus = 'Critical';
-    } else if (turbidity > WHO_STANDARDS.TURBIDITY_MAX || bod > WHO_STANDARDS.BOD_MAX || ph < WHO_STANDARDS.PH_MIN || ph > WHO_STANDARDS.PH_MAX) {
-      riskStatus = 'Moderate';
+    // If machine learning score has not yet arrived, check threshold violations
+    const hasDangerousHeavyMetals =
+      leadConcentration > WATER_SAFETY_LIMITS.MAXIMUM_LEAD_MG_L ||
+      mercuryConcentration > WATER_SAFETY_LIMITS.MAXIMUM_MERCURY_MG_L ||
+      arsenicConcentration > WATER_SAFETY_LIMITS.MAXIMUM_ARSENIC_MG_L;
+
+    if (hasDangerousHeavyMetals) {
+      calculatedRiskStatus = 'Critical';
+    } else if (
+      turbidityValue > WATER_SAFETY_LIMITS.MAXIMUM_TURBIDITY_NTU ||
+      biologicalOxygenDemand > WATER_SAFETY_LIMITS.MAXIMUM_BIOCHEMICAL_DEMAND_MG_L ||
+      phValue < WATER_SAFETY_LIMITS.MINIMUM_SAFE_PH ||
+      phValue > WATER_SAFETY_LIMITS.MAXIMUM_SAFE_PH
+    ) {
+      calculatedRiskStatus = 'Moderate';
     }
   }
 
   return {
-    warnings,
-    recommendations,
-    riskStatus
+    warnings: detectedWarnings,
+    recommendations: actionRecommendations,
+    riskStatus: calculatedRiskStatus
   };
 }
 
 module.exports = {
-  WHO_STANDARDS,
+  WATER_SAFETY_LIMITS,
   analyzeParameters
 };
