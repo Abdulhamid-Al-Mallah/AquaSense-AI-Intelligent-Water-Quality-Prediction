@@ -163,15 +163,13 @@ export const History = () => {
                             >
                               <Printer className="w-4 h-4" />
                             </button>
-                            {user?.role === 'admin' && (
-                              <button
-                                onClick={() => handleDelete(rec._id)}
-                                title="Delete Record"
-                                className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            )}
+                            <button
+                              onClick={() => handleDelete(rec._id)}
+                              title="Delete Record"
+                              className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                             <button
                               onClick={() => toggleExpand(rec._id)}
                               className="p-1.5 text-slate-400 hover:text-slate-700"

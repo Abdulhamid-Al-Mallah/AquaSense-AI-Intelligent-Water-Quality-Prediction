@@ -7,7 +7,6 @@ export const Register = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('analyst');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
@@ -18,7 +17,7 @@ export const Register = () => {
     setError('');
     setLoading(true);
     try {
-      await register(name, email, password, role);
+      await register(name, email, password);
       navigate('/');
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Registration failed');
@@ -83,19 +82,6 @@ export const Register = () => {
               minLength={6}
               className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all"
             />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Assigned Role</label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all"
-            >
-              <option value="analyst">Lab Analyst (Standard Operator)</option>
-              <option value="admin">Laboratory Admin (Full Permissions)</option>
-              <option value="viewer">Regulatory Auditor (Read-Only)</option>
-            </select>
           </div>
 
           <button

@@ -46,8 +46,8 @@ export const AuthProvider = ({ children }) => {
     throw new Error(res.data?.error || 'Authentication failed');
   };
 
-  const register = async (name, email, password, role = 'analyst') => {
-    const res = await api.post('/auth/register', { name, email, password, role });
+  const register = async (name, email, password) => {
+    const res = await api.post('/auth/register', { name, email, password });
     if (res.data && res.data.success) {
       const { token: receivedToken, user: receivedUser } = res.data;
       setToken(receivedToken);

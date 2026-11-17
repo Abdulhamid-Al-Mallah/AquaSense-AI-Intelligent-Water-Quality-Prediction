@@ -19,7 +19,7 @@ const generateToken = (id) => {
  */
 const registerUser = async (req, res, next) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({
@@ -40,7 +40,7 @@ const registerUser = async (req, res, next) => {
       name,
       email,
       password,
-      role: role || 'analyst'
+      role: 'analyst'
     });
 
     const token = generateToken(user._id);
@@ -138,7 +138,7 @@ const seedAdmin = async () => {
         name: 'AquaSense Admin',
         email: adminEmail,
         password: 'AdminPassword123!',
-        role: 'admin'
+        role: 'analyst'
       });
       console.log(`[AquaSense AI] Default admin created: ${adminEmail} / AdminPassword123!`);
     }

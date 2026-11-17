@@ -82,7 +82,7 @@ export const Layout = () => {
               <p className="text-xs font-semibold text-slate-200 truncate">{user?.name || 'Lab Analyst'}</p>
               <div className="flex items-center space-x-1 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <p className="text-[10px] text-slate-400 uppercase tracking-wide capitalize">{user?.role || 'analyst'}</p>
+                <p className="text-[10px] text-slate-400 uppercase tracking-wide">Lab Analyst</p>
               </div>
             </div>
           </div>
