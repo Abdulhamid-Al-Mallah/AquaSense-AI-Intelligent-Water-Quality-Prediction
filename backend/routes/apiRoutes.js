@@ -1,15 +1,16 @@
-const express = require('express');
-const router = express.Router();
-const {
+import express from 'express';
+import {
   predictWaterQuality,
   getHistory,
   deleteRecord
-} = require('../controllers/predictionController');
-const {
+} from '../controllers/predictionController.js';
+import {
   getSummary,
   getTrends,
   getLocations
-} = require('../controllers/analyticsController');
+} from '../controllers/analyticsController.js';
+
+const router = express.Router();
 
 // Prediction Routes
 router.post('/predict', predictWaterQuality);
@@ -18,9 +19,9 @@ router.post('/predict', predictWaterQuality);
 router.get('/history', getHistory);
 router.delete('/history/:id', deleteRecord);
 
-// Analytics & Aggregations
+// Analytics & Aggregation Routes
 router.get('/analytics/summary', getSummary);
 router.get('/analytics/trends', getTrends);
 router.get('/analytics/locations', getLocations);
 
-module.exports = router;
+export default router;

@@ -1,15 +1,18 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
+/**
+ * Connects to MongoDB database using Mongoose.
+ */
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI, {
+    const connectionInstance = await mongoose.connect(process.env.MONGO_URI, {
       autoIndex: true
     });
-    console.log(`[AquaSense AI] MongoDB Connected: ${conn.connection.host}`);
-  } catch (error) {
-    console.error(`[AquaSense AI] MongoDB Connection Error: ${error.message}`);
+    console.log(`[AquaSense AI] MongoDB Connected: ${connectionInstance.connection.host}`);
+  } catch (connectionError) {
+    console.error(`[AquaSense AI] MongoDB Connection Error: ${connectionError.message}`);
     process.exit(1);
   }
 };
 
-module.exports = connectDB;
+export default connectDB;

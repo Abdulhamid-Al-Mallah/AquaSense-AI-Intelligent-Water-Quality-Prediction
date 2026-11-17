@@ -7,7 +7,7 @@
  */
 
 // Official WHO & EPA Maximum Acceptable Thresholds for Safe Drinking Water
-const WATER_SAFETY_LIMITS = {
+export const WATER_SAFETY_LIMITS = {
   MINIMUM_SAFE_PH: 6.5,
   MAXIMUM_SAFE_PH: 8.5,
   MAXIMUM_TURBIDITY_NTU: 5.0,
@@ -25,7 +25,7 @@ const WATER_SAFETY_LIMITS = {
  * @param {number|null} drinkabilityScore - Optional continuous prediction score (0 to 100)
  * @returns {Object} { warnings, recommendations, riskStatus }
  */
-function analyzeParameters(parameters, drinkabilityScore = null) {
+export function analyzeParameters(parameters, drinkabilityScore = null) {
   const detectedWarnings = [];
   const actionRecommendations = [];
 
@@ -131,8 +131,7 @@ function analyzeParameters(parameters, drinkabilityScore = null) {
     actionRecommendations.push('Maintain regular monitoring and standard routine UV or chlorination disinfection.');
   }
 
-  // Determine overall risk category:
-  // Safe: 75% to 100% | Moderate: 40% to 74.9% | Critical: Below 40%
+  // Determine overall risk category
   let calculatedRiskStatus = 'Safe';
   if (drinkabilityScore !== null) {
     if (drinkabilityScore >= 75) {
@@ -143,7 +142,6 @@ function analyzeParameters(parameters, drinkabilityScore = null) {
       calculatedRiskStatus = 'Critical';
     }
   } else {
-    // If machine learning score has not yet arrived, check threshold violations
     const hasDangerousHeavyMetals =
       leadConcentration > WATER_SAFETY_LIMITS.MAXIMUM_LEAD_MG_L ||
       mercuryConcentration > WATER_SAFETY_LIMITS.MAXIMUM_MERCURY_MG_L ||
@@ -167,8 +165,3 @@ function analyzeParameters(parameters, drinkabilityScore = null) {
     riskStatus: calculatedRiskStatus
   };
 }
-
-module.exports = {
-  WATER_SAFETY_LIMITS,
-  analyzeParameters
-};

@@ -44,7 +44,7 @@ const errorHandler = (encounteredError, request, response, next) => {
     });
   }
 
-  const statusCode = errorResponse.statusCode || 500;
+  const statusCode = response.statusCode === 200 ? 500 : (response.statusCode || errorResponse.statusCode || 500);
   const failureMessage = errorResponse.message || 'An unexpected server error occurred.';
 
   return response.status(statusCode).json({
@@ -53,4 +53,4 @@ const errorHandler = (encounteredError, request, response, next) => {
   });
 };
 
-module.exports = errorHandler;
+export default errorHandler;
