@@ -26,8 +26,28 @@ connectDB().then(() => {
   seedAdmin();
 });
 
-// Configure middleware
-application.use(cors());
+// Configure CORS policy (Restricted to authorized client origins)
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3000',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
+application.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g. mobile apps, curl, server-to-server) or from allowed list
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error(`CORS Policy: Access denied from origin ${origin}`));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  })
+);
 application.use(express.json({ limit: '5mb' }));
 application.use(express.urlencoded({ extended: true, limit: '5mb' }));
 

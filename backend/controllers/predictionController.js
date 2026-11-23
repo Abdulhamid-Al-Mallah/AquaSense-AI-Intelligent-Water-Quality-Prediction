@@ -202,7 +202,7 @@ export const predictWaterQuality = asyncHandler(async (request, response) => {
   for (const rawSample of sampleList) {
     const cleanParams = validateAndCleanWaterParameters(rawSample);
     const prediction = await executePythonPrediction(cleanParams);
-    const advisory = analyzeParameters(cleanParams, prediction.drinkabilityScore);
+    const advisory = analyzeParameters(cleanParams, prediction.drinkabilityScore, prediction.isAnomaly);
 
     const recordDocument = {
       ph: cleanParams.ph,
@@ -219,6 +219,8 @@ export const predictWaterQuality = asyncHandler(async (request, response) => {
       drinkabilityScore: prediction.drinkabilityScore,
       predictedClass: prediction.predictedClass,
       riskStatus: advisory.riskStatus,
+      isAnomaly: Boolean(prediction.isAnomaly),
+      anomalyScore: Number(prediction.anomalyScore || 0),
       warnings: advisory.warnings,
       recommendations: advisory.recommendations
     };
@@ -307,3 +309,80 @@ export const deleteRecord = asyncHandler(async (request, response) => {
     data: {}
   });
 });
+
+/**
+ * Batch import and prediction endpoint for CSV / dataset bulk ingestion.
+ * Route: POST /api/predict/batch
+ */
+export const batchPredictWaterQuality = asyncHandler(async (request, response) => {
+  const { samples } = request.body;
+  const sampleList = Array.isArray(samples) ? samples : (Array.isArray(request.body) ? request.body : []);
+
+  if (sampleList.length === 0) {
+    response.status(400);
+    throw new Error('Please provide an array of samples under "samples" or in the request body.');
+  }
+
+  const processedRecords = [];
+  let anomaliesCount = 0;
+  let safeCount = 0;
+  let moderateCount = 0;
+  let criticalCount = 0;
+
+  for (const rawSample of sampleList) {
+    try {
+      const cleanParams = validateAndCleanWaterParameters(rawSample);
+      const prediction = await executePythonPrediction(cleanParams);
+      const advisory = analyzeParameters(cleanParams, prediction.drinkabilityScore, prediction.isAnomaly);
+
+      if (prediction.isAnomaly) anomaliesCount++;
+      if (advisory.riskStatus === 'Safe') safeCount++;
+      else if (advisory.riskStatus === 'Moderate') moderateCount++;
+      else criticalCount++;
+
+      processedRecords.push({
+        ph: cleanParams.ph,
+        turbidity: cleanParams.turbidity,
+        temperature: cleanParams.temperature,
+        do: cleanParams.do,
+        bod: cleanParams.bod,
+        lead: cleanParams.lead,
+        mercury: cleanParams.mercury,
+        arsenic: cleanParams.arsenic,
+        location: cleanParams.location,
+        timestamp: cleanParams.timestamp,
+        submittedBy: request.user ? request.user._id : (rawSample.submittedBy || null),
+        drinkabilityScore: prediction.drinkabilityScore,
+        predictedClass: prediction.predictedClass,
+        riskStatus: advisory.riskStatus,
+        isAnomaly: Boolean(prediction.isAnomaly),
+        anomalyScore: Number(prediction.anomalyScore || 0),
+        warnings: advisory.warnings,
+        recommendations: advisory.recommendations
+      });
+    } catch (parseOrPredictErr) {
+      console.warn(`[Batch Ingestion] Skipping invalid record:`, parseOrPredictErr.message);
+    }
+  }
+
+  if (processedRecords.length === 0) {
+    response.status(400);
+    throw new Error('None of the submitted batch samples could be validated or predicted.');
+  }
+
+  const savedRecords = await WaterRecord.insertMany(processedRecords);
+
+  response.status(201).json({
+    success: true,
+    totalSubmitted: sampleList.length,
+    totalProcessed: savedRecords.length,
+    statistics: {
+      safe: safeCount,
+      moderate: moderateCount,
+      critical: criticalCount,
+      anomaliesDetected: anomaliesCount
+    },
+    data: savedRecords
+  });
+});
+

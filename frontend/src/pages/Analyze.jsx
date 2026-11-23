@@ -123,23 +123,74 @@ export const Analyze = () => {
     }
   };
 
-  // Handle Uploading a .json file
+  // Handle Uploading a .json or .csv file
   const handleFileUpload = (event) => {
     setBatchParseError('');
     const uploadedFile = event.target.files?.[0];
     if (!uploadedFile) return;
 
+    const fileName = uploadedFile.name.toLowerCase();
+    const isCsv = fileName.endsWith('.csv');
+
     const fileReader = new FileReader();
     fileReader.onload = (fileEvent) => {
       try {
-        const parsedContent = JSON.parse(fileEvent.target.result);
-        if (!Array.isArray(parsedContent)) {
-          throw new Error('The uploaded JSON file must contain an array of sample objects.');
+        const textContent = fileEvent.target.result;
+        if (isCsv) {
+          // Parse CSV text into array of sample objects
+          const lines = textContent.split(/\r?\n/).filter((l) => l.trim().length > 0);
+          if (lines.length < 2) {
+            throw new Error('CSV must contain a header row and at least one data row.');
+          }
+
+          const rawHeaders = lines[0].split(',').map((h) => h.trim().replace(/^["']|["']$/g, ''));
+          const cleanHeaders = rawHeaders.map((h) => {
+            const low = h.toLowerCase();
+            if (low.includes('ph')) return 'ph';
+            if (low.includes('turbid')) return 'turbidity';
+            if (low.includes('temp')) return 'temperature';
+            if (low === 'do' || low.includes('dissolved')) return 'do';
+            if (low === 'bod' || low.includes('bio')) return 'bod';
+            if (low.includes('lead')) return 'lead';
+            if (low.includes('merc')) return 'mercury';
+            if (low.includes('arsen')) return 'arsenic';
+            if (low.includes('loc')) return 'location';
+            return h;
+          });
+
+          const parsedRows = [];
+          for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',').map((v) => v.trim().replace(/^["']|["']$/g, ''));
+            if (values.length < cleanHeaders.length) continue;
+
+            const rowObj = { location: 'Imported CSV Station' };
+            cleanHeaders.forEach((hdr, idx) => {
+              const val = values[idx];
+              if (hdr === 'location') {
+                rowObj.location = val || 'Imported Station';
+              } else {
+                rowObj[hdr] = isNaN(Number(val)) ? 0 : Number(val);
+              }
+            });
+            parsedRows.push(rowObj);
+          }
+
+          if (parsedRows.length === 0) {
+            throw new Error('No valid numeric data rows could be extracted from the CSV file.');
+          }
+
+          setParsedBatchSamples(parsedRows);
+          setRawJsonText(JSON.stringify(parsedRows.slice(0, 5), null, 2) + `\n// ... (${parsedRows.length} total rows parsed from ${uploadedFile.name})`);
+        } else {
+          const parsedContent = JSON.parse(textContent);
+          if (!Array.isArray(parsedContent)) {
+            throw new Error('The uploaded JSON file must contain an array of sample objects.');
+          }
+          setParsedBatchSamples(parsedContent);
+          setRawJsonText(JSON.stringify(parsedContent, null, 2));
         }
-        setParsedBatchSamples(parsedContent);
-        setRawJsonText(JSON.stringify(parsedContent, null, 2));
       } catch (parseError) {
-        setBatchParseError(`JSON Read Error: ${parseError.message}`);
+        setBatchParseError(`File Read Error: ${parseError.message}`);
       }
     };
     fileReader.readAsText(uploadedFile);
@@ -457,21 +508,21 @@ export const Analyze = () => {
               </form>
             </div>
           ) : (
-            /* Bulk JSON Tab */
+            /* Bulk CSV / JSON Tab */
             <div className="bg-white rounded-xl p-6 border border-slate-200/80 shadow-sm space-y-6">
               <div>
-                <h2 className="text-base font-bold text-slate-900 tracking-tight">Batch JSON Data Ingestion</h2>
-                <p className="text-xs text-slate-500">Upload a `.json` file or paste an array of certified lab assay documents</p>
+                <h2 className="text-base font-bold text-slate-900 tracking-tight">Batch CSV & JSON Dataset Ingestion</h2>
+                <p className="text-xs text-slate-500">Upload a `.csv` or `.json` dataset file, or paste an array of water measurements</p>
               </div>
 
               {/* Upload Drop Zone */}
               <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:bg-slate-50 transition-colors">
                 <UploadCloud className="w-10 h-10 text-sky-500 mx-auto mb-2" />
-                <p className="text-xs font-semibold text-slate-700">Upload laboratory assay file (.json)</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">Supports multi-station batches up to 5MB</p>
+                <p className="text-xs font-semibold text-slate-700">Upload laboratory dataset (.csv or .json)</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Supports multi-station batches and time-series records up to 5MB</p>
                 <input
                   type="file"
-                  accept=".json"
+                  accept=".csv, .json"
                   onChange={handleFileUpload}
                   className="mt-4 block mx-auto text-xs text-slate-500 file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100"
                 />
@@ -739,6 +790,13 @@ export const Analyze = () => {
                     )}
                     <span>{currentActiveDisplay.riskStatus} Classification</span>
                   </span>
+
+                  {currentActiveDisplay.isAnomaly && (
+                    <div className="mt-3 p-2.5 bg-amber-50 border border-amber-300 rounded-lg text-amber-800 text-xs font-semibold flex items-center justify-center space-x-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>Multivariate Hydrological Anomaly (Score: {currentActiveDisplay.anomalyScore})</span>
+                    </div>
+                  )}
                 </div>
               </div>
 

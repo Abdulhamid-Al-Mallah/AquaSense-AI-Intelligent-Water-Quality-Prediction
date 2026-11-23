@@ -25,9 +25,18 @@ export const WATER_SAFETY_LIMITS = {
  * @param {number|null} drinkabilityScore - Optional continuous prediction score (0 to 100)
  * @returns {Object} { warnings, recommendations, riskStatus }
  */
-export function analyzeParameters(parameters, drinkabilityScore = null) {
+export function analyzeParameters(parameters, drinkabilityScore = null, isAnomaly = false) {
   const detectedWarnings = [];
   const actionRecommendations = [];
+
+  if (isAnomaly) {
+    detectedWarnings.push(
+      'Multivariate Anomaly Detected: The multi-parameter combination deviates significantly from standard hydrological baseline patterns (Isolation Forest outlier flag).'
+    );
+    actionRecommendations.push(
+      'Conduct immediate secondary laboratory resampling and inspect sensor calibration to eliminate multi-parameter distortion.'
+    );
+  }
 
   const phValue = Number(parameters.ph);
   const turbidityValue = Number(parameters.turbidity);

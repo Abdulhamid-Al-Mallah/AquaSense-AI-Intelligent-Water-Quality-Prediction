@@ -78,6 +78,16 @@ const waterRecordSchema = new mongoose.Schema(
       enum: ['Safe', 'Moderate', 'Critical']
     },
 
+    // Multivariate Anomaly Detection
+    isAnomaly: {
+      type: Boolean,
+      default: false
+    },
+    anomalyScore: {
+      type: Number,
+      default: 0
+    },
+
     // Decision-Support Fields
     warnings: {
       type: [String],

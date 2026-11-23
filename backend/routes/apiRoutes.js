@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   predictWaterQuality,
+  batchPredictWaterQuality,
   getHistory,
   deleteRecord
 } from '../controllers/predictionController.js';
@@ -9,19 +10,21 @@ import {
   getTrends,
   getLocations
 } from '../controllers/analyticsController.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Prediction Routes
-router.post('/predict', predictWaterQuality);
+// Prediction Routes (Protected via JWT Authentication Guard)
+router.post('/predict', protect, predictWaterQuality);
+router.post('/predict/batch', protect, batchPredictWaterQuality);
 
-// History Routes
-router.get('/history', getHistory);
-router.delete('/history/:id', deleteRecord);
+// History Routes (Protected)
+router.get('/history', protect, getHistory);
+router.delete('/history/:id', protect, deleteRecord);
 
-// Analytics & Aggregation Routes
-router.get('/analytics/summary', getSummary);
-router.get('/analytics/trends', getTrends);
-router.get('/analytics/locations', getLocations);
+// Analytics & Aggregation Routes (Protected)
+router.get('/analytics/summary', protect, getSummary);
+router.get('/analytics/trends', protect, getTrends);
+router.get('/analytics/locations', protect, getLocations);
 
 export default router;

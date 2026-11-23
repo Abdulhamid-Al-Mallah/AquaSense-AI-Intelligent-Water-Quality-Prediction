@@ -163,3 +163,6 @@ $RECYCLE.BIN/
 *.temp
 *.bak
 *.backup
+.~lock.*#
+~$*.docx
+~$*.doc

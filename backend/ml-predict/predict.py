@@ -36,7 +36,7 @@ def run_prediction():
         # Alternative spelling mappings to handle various frontend key conventions
         alternative_key_names = {
             'Turbidity': ['Turbidity (NTU)', 'turbidity'],
-            'Temperature': ['Temperature (°C)', 'temperature'],
+            'Temperature': ['Temperature (°C)', 'Temperature (Â°C)', 'temperature'],
             'DO': ['DO (mg/L)', 'do', 'dissolvedOxygen'],
             'BOD': ['BOD (mg/L)', 'bod', 'biochemicalOxygenDemand'],
             'Lead': ['Lead (mg/L)', 'lead'],
@@ -62,10 +62,11 @@ def run_prediction():
             
             ordered_feature_values.append(float(found_value))
 
-        # Step 3: Load serialized scaler and model artifacts
+        # Step 3: Load serialized scaler, model, and anomaly detector artifacts
         current_script_directory = os.path.dirname(os.path.abspath(__file__))
         scaler_file_path = os.path.join(current_script_directory, "scaler.pkl")
         model_file_path = os.path.join(current_script_directory, "model.pkl")
+        anomaly_file_path = os.path.join(current_script_directory, "anomaly_detector.pkl")
 
         if not os.path.exists(scaler_file_path) or not os.path.exists(model_file_path):
             raise FileNotFoundError("Model or Scaler (.pkl) files not found in backend/ml-predict directory.")
@@ -87,11 +88,26 @@ def run_prediction():
 
         predicted_class_integer = int(trained_model.predict(scaled_features)[0])
 
-        # Step 5: Output JSON string for Node.js child process to read from stdout
+        # Step 5: Multivariate Anomaly Detection (Isolation Forest)
+        is_anomaly = False
+        anomaly_score = 0.0
+        if os.path.exists(anomaly_file_path):
+            anomaly_detector = joblib.load(anomaly_file_path)
+            # IsolationForest returns -1 for anomaly, 1 for inlier
+            anomaly_pred = anomaly_detector.predict(scaled_features)[0]
+            is_anomaly = bool(anomaly_pred == -1)
+            # Decision function: negative values indicate outliers
+            raw_score = float(anomaly_detector.decision_function(scaled_features)[0])
+            # Normalize to an intuitive positive anomaly score where higher = more anomalous
+            anomaly_score = round(float(max(0.0, -raw_score * 2.0)), 4)
+
+        # Step 6: Output JSON string for Node.js child process to read from stdout
         response_data = {
             "success": True,
             "drinkabilityScore": final_drinkability_score,
             "predictedClass": predicted_class_integer,
+            "isAnomaly": is_anomaly,
+            "anomalyScore": anomaly_score,
             "classProbabilities": {
                 "class0_clean": round(float(class_probabilities[0]), 4),
                 "class1_moderate": round(float(class_probabilities[1]), 4),
