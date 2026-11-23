@@ -28,21 +28,27 @@ TARGET_COL = 'Pollution_Level'
 X = df[FEATURE_COLS]
 y = df[TARGET_COL]
 
-# 2. Train/Test Split (80/20) with Stratification
-# Stratification ensures the severe class imbalance (especially Class 0) is proportionally split
-print("\n[1/3] Performing Stratified 80/20 Train/Test Split...")
-X_train, X_test, y_train, y_test = train_test_split(
+# 2. Stratified Train/Test/Validation split (70/20/10).
+# First reserve 20% for final testing, then reserve 12.5% of the remaining 80%
+# for validation. This yields 70%/10%/20% overall.
+print("\n[1/3] Performing Stratified 70/20/10 Train/Test/Validation Split...")
+X_trainval, X_test, y_trainval, y_test = train_test_split(
     X,
     y,
     test_size=0.20,
     random_state=42,
     stratify=y
 )
+X_train, X_validation, y_train, y_validation = train_test_split(
+    X_trainval, y_trainval, test_size=0.125, random_state=42, stratify=y_trainval
+)
 
 print(f"Original Dataset Shape : X={X.shape}, y={y.shape}")
 print(f"X_train Shape          : {X_train.shape}")
+print(f"X_validation Shape     : {X_validation.shape}")
 print(f"X_test Shape           : {X_test.shape}")
 print(f"y_train Shape          : {y_train.shape}")
+print(f"y_validation Shape     : {y_validation.shape}")
 print(f"y_test Shape           : {y_test.shape}")
 
 print("\n--- Training Set Class Distribution (Before SMOTE) ---")
@@ -50,6 +56,8 @@ print(y_train.value_counts().sort_index())
 
 print("\n--- Test Set Class Distribution (Untouched Ground Truth) ---")
 print(y_test.value_counts().sort_index())
+print("\n--- Validation Set Class Distribution (Untouched Ground Truth) ---")
+print(y_validation.value_counts().sort_index())
 
 # 3. Mathematically Sound Preprocessing: Feature Scaling BEFORE SMOTE
 # SMOTE computes Euclidean distances among nearest neighbors. If features have disparate units,
@@ -58,12 +66,14 @@ print(y_test.value_counts().sort_index())
 print("\n[2/3] Fitting StandardScaler strictly on X_train before SMOTE...")
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
+X_validation_scaled = scaler.transform(X_validation)
 X_test_scaled = scaler.transform(X_test)
 print("Features standardized across unit-free zero-mean unit-variance distribution.")
 
 # 4. SMOTE Resampling on Scaled Training Data
-print("\n[3/3] Applying SMOTE strictly to Scaled Training Data (k_neighbors=4)...")
-smote = SMOTE(k_neighbors=4, random_state=42)
+print("\n[3/3] Applying SMOTE strictly to Scaled Training Data (k_neighbors=3)...")
+# The training fold has four Class 0 records; k_neighbors must be below that count.
+smote = SMOTE(k_neighbors=3, random_state=42)
 X_train_resampled, y_train_resampled = smote.fit_resample(X_train_scaled, y_train)
 
 print("\n--- Training Set Class Distribution (After SMOTE on Scaled Data) ---")

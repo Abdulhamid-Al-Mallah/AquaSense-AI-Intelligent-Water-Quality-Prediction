@@ -272,7 +272,7 @@ export const Analyze = () => {
       <div>
         <h1 className="text-2xl font-black text-slate-900 tracking-tight">Laboratory Analysis & Simulator</h1>
         <p className="text-sm text-slate-500 mt-0.5">
-          Ingest certified physicochemical assays, run XGBoost predictions, and simulate treatment improvements
+          Enter water-quality parameters, run XGBoost predictions, and explore hypothetical treatment adjustments
         </p>
       </div>
 
@@ -318,7 +318,7 @@ export const Analyze = () => {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-5 mb-5 border-b border-slate-100 gap-3">
                 <div>
                   <h2 className="text-base font-bold text-slate-900 tracking-tight">Physicochemical Sensor Assay</h2>
-                  <p className="text-xs text-slate-500">Provide certified lab measurements across the 8 parameters</p>
+                  <p className="text-xs text-slate-500">Provide measurements for the eight model input parameters</p>
                 </div>
                 {/* 1-Click Preset Dropdown */}
                 <div className="flex items-center space-x-2">

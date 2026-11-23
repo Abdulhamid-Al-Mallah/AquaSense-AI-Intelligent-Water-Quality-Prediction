@@ -16,7 +16,7 @@ print("\nAll Dataset Columns:")
 print(df.columns.tolist())
 
 # 2. Define Features (X)
-# Manual certified laboratory parameters (excluding administrative metadata: Timestamp, Location)
+# Model input parameters (excluding administrative metadata: Timestamp, Location)
 FEATURE_COLS = [
     'pH',
     'Turbidity (NTU)',

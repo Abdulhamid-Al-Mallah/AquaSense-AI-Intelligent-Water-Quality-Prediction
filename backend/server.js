@@ -6,7 +6,6 @@ import { fileURLToPath } from 'url';
 
 import connectDB from './config/db.js';
 import errorHandler from './middleware/errorMiddleware.js';
-import { seedAdmin } from './controllers/authController.js';
 import authRoutes from './routes/authRoutes.js';
 import apiRoutes from './routes/apiRoutes.js';
 
@@ -20,17 +19,17 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 // Initialize Express application
 const application = express();
 
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  throw new Error('JWT_SECRET must be configured with at least 32 characters in backend/.env.');
+}
+
 // Connect to MongoDB Database
-connectDB().then(() => {
-  // Seed demo account on startup if absent
-  seedAdmin();
-});
+connectDB();
 
 // Configure CORS policy (Restricted to authorized client origins)
 const allowedOrigins = [
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
   'http://localhost:3000',
+  'http://127.0.0.1:3000',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 

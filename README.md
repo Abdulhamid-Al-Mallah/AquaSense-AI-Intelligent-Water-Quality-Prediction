@@ -1,7 +1,7 @@
 # AquaSense AI: Intelligent Water Quality Prediction & Contamination Early-Warning System
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Python: 3.12](https://img.shields.io/badge/Python-3.12-3776AB.svg?logo=python&logoColor=white)](https://python.org)
+[![Python: 3.9+](https://img.shields.io/badge/Python-3.9%2B-3776AB.svg?logo=python&logoColor=white)](https://python.org)
 [![Node.js: 18+](https://img.shields.io/badge/Node.js-18%2B-339933.svg?logo=node.js&logoColor=white)](https://nodejs.org)
 [![React: 18](https://img.shields.io/badge/React-18-61DAFB.svg?logo=react&logoColor=black)](https://react.dev)
 [![XGBoost](https://img.shields.io/badge/Model-XGBoost%20Champion-FF6600.svg)](https://xgboost.readthedocs.io)
@@ -40,14 +40,14 @@ AquaSense AI operates as a 3-tier decoupled micro-architecture:
               │ Subprocess (JSON stdio)    │ MongoDB Driver
               ▼                            ▼
 ┌──────────────────────────────┐ ┌──────────────────────┐
-│  Python 3.12 ML Subsystem    │ │    MongoDB Atlas     │
+│  Python ML Subsystem         │ │    MongoDB Atlas     │
 │ - StandardScaler             │ │ - WaterRecord Store  │
 │ - XGBoost (Champion Classifier) │ - User Auth Store   │
 │ - Isolation Forest (Anomaly) │ └──────────────────────┘
 └──────────────────────────────┘
 ```
 
-1. **Client Tier (`/frontend`):** Built with React 18, Tailwind CSS, Lucide icons, and Recharts. Features manual physicochemical form entry, drag-and-drop CSV / JSON dataset batch ingestion, interactive "What-If" treatment simulation, and real-time GIS monitoring charts.
+1. **Client Tier (`/frontend`):** Built with React 18, Tailwind CSS, Lucide icons, and Recharts. Features manual parameter entry, CSV/JSON batch ingestion, an interactive hypothetical "What-If" parameter simulation, and historical trend/location summary charts.
 2. **Server Tier (`/backend`):** Express REST API configured with JSON Web Token (JWT) route protection, strict CORS origin filtering, input parameter sanity boundaries, and the WHO/EPA water safety advisory engine.
 3. **Machine Learning Tier (`/model-training` & `/backend/ml-predict`):** Serialized Python inference engine executing feature standardization, extreme gradient boosting (XGBoost), and multivariate anomaly detection (Isolation Forest).
 
@@ -56,7 +56,7 @@ AquaSense AI operates as a 3-tier decoupled micro-architecture:
 ## 🧪 Dataset Provenance & Characteristics
 
 - **Dataset File:** `model-training/data/Water_Quality_Dataset.csv`
-- **Origin & Nature:** A controlled hydrological benchmark time-series dataset calibrated against official WHO and EPA drinking water parameters.
+- **Origin & Nature:** Downloaded from [Kaggle](https://www.kaggle.com/datasets/ziya07/water-quality-and-pollution-monitoring-dataset). The repository does not include an accredited laboratory certificate for these records; model results describe this dataset and do not establish performance on certified field measurements.
 - **Volume:** 1,000 hourly sequential records spanning 5 monitoring stations (`L1` through `L5`) for the 2024 calendar year.
 - **Physical & Chemical Features (8 Inputs):**
   1. pH (6.5 – 8.5 safe range)
@@ -73,32 +73,31 @@ AquaSense AI operates as a 3-tier decoupled micro-architecture:
   - **Class 2 (Severe Pollution):** 915 samples (91.5%)
 
 ### Preprocessing & Leakage Prevention Pipeline
-1. **Stratified Split:** 80/20 train/test partition ($N_{\text{train}} = 800$, $N_{\text{test}} = 200$) executed before any transformations.
-2. **Standard Scaling FIRST:** `StandardScaler` is fitted strictly on $X_{\text{train}}$ and transforms both sets. This standardizes features across unit-free distributions, preventing heavy metal micro-values ($0.001$ mg/L) from being drowned out by temperature or turbidity during Euclidean distance calculations.
-3. **SMOTE on Scaled Data:** Synthetic Minority Over-sampling Technique ($k=4$) expands minority classes strictly on the scaled training fold ($N = 2,196$ balanced samples). The test set remains completely untouched.
+1. **Stratified Split:** 70/20/10 train/test/validation partition ($N_{\text{train}} = 700$, $N_{\text{test}} = 200$, $N_{\text{validation}} = 100$) before transformations. Model selection uses validation results; the test fold is reserved for the selected model's final evaluation.
+2. **Training-only scaling:** `StandardScaler` is fitted only on the 700 training records and transforms the validation and test folds without refitting. This standardizes features before SMOTE's distance calculations.
+3. **Training-only SMOTE:** SMOTE (`k_neighbors=3`) is applied only to the scaled training fold, producing 1,923 balanced records (641 per class). The validation and test folds are never resampled. `k=3` is used because the training split contains four Class 0 records.
 4. **Multivariate Anomaly Detection:** An unsupervised `IsolationForest(contamination=0.05)` model trains on the standardized space to detect unnatural sensor combinations.
 
 ---
 
 ## 📊 Experimental Results (SENG491 Model Benchmark)
 
-Evaluated on the exact 200-sample unseen held-out test fold:
+Candidate models are compared on the 100-record validation fold:
 
 | Model Architecture | Model Category | Accuracy (%) | Macro F1 | Weighted F1 | Selection Status |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Multinomial Logistic Regression** | Linear Baseline | 83.00% | 0.5686 | 0.8629 | Rejected |
-| **Random Forest Classifier** | Bagging Ensemble | 97.00% | 0.5907 | 0.9655 | Runner-up |
-| **XGBoost Classifier** | **Gradient Boosting** | **98.00%** | **0.6204** | **0.9794** | **✅ Champion** |
+| **Multinomial Logistic Regression** | Linear Baseline | 83.00% | 0.6649 | 0.8594 | Rejected |
+| **Random Forest Classifier** | Bagging Ensemble | 97.00% | 0.5964 | 0.9641 | Runner-up |
+| **XGBoost Classifier** | **Gradient Boosting** | **97.00%** | **0.6042** | **0.9659** | **✅ Selected** |
 
-> **Evaluation Limitations Acknowledgment:**  
-> In the 200-sample test fold, Class 0 has 1 sample, Class 1 has 16 samples, and Class 2 has 183 samples. The 98.00% accuracy is primarily driven by the dominant class. Therefore, Weighted F1 (0.9794) and Moderate Recall (81.25%, capturing 13/16 instances) serve as the true measure of operational reliability.
+> **Final test evaluation:** The validation-selected XGBoost model achieved 98.50% accuracy, 0.9823 weighted F1, and 0.6326 macro F1 on the untouched 200-record test fold. Class 1 recall was 87.50% (14/16); Class 0 support was one record and was misclassified. These benchmark results do not establish field performance.
 
 ---
 
 ## 🔒 Security & Access Control
 
 - **JWT Authentication Guard:** All sensitive endpoints (`/api/predict`, `/api/predict/batch`, `/api/history`, `/api/history/:id`, `/api/analytics/*`) require a valid HTTP `Authorization: Bearer <token>` header verified by `authMiddleware.js`.
-- **CORS Whitelist:** Configured in `server.js` to restrict origins to authorized client ports (`http://localhost:5173`, `http://127.0.0.1:5173`, or `FRONTEND_URL`), preventing arbitrary cross-origin request forgery.
+- **CORS Allowlist:** Configured in `server.js` for the local frontend (`http://localhost:3000`, `http://127.0.0.1:3000`) and the configured `FRONTEND_URL`. CORS controls which browser origins may read API responses; it is not an authentication or CSRF control.
 - **Environment Isolation:** Credentials and secrets are managed via `.env`.
 
 ---
@@ -106,13 +105,13 @@ Evaluated on the exact 200-sample unseen held-out test fold:
 ## 🚀 Setup & Installation Guide
 
 ### Prerequisites
-- [Node.js](https://nodejs.org/) (v18.0.0 or higher)
-- [Python](https://python.org/) (v3.10 to v3.12)
+- [Node.js](https://nodejs.org/) (v20.19 or higher)
+- [Python](https://python.org/) (v3.9 or later; direct ML dependencies are pinned)
 - [MongoDB](https://www.mongodb.com/) (Local instance or MongoDB Atlas cluster URI)
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/AquaSense-AI.git
+git clone https://github.com/Abdulhamid-Al-Mallah/AquaSense-AI-Intelligent-Water-Quality-Prediction.git
 cd AquaSense-AI-Intelligent-Water-Quality-Prediction
 ```
 
@@ -128,9 +127,10 @@ cd ..
 ### 3. Backend Setup
 ```bash
 cd backend
-npm install
-# Configure your environment variables
-cp .env.example .env # or verify backend/.env
+npm ci
+# In PowerShell, copy the template and edit .env:
+Copy-Item .env.example .env
+# Set a unique JWT_SECRET (at least 32 characters) and a reachable MONGO_URI.
 # Run automated backend test suite
 node tests/run_tests.js
 # Start development server
@@ -141,10 +141,10 @@ cd ..
 ### 4. Frontend Setup
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
-Open your browser at `http://localhost:5173`. Default administrator account is seeded automatically on initial database connection (`admin@aquasense.ai` / `Admin@123`).
+Open your browser at `http://localhost:3000`. There is no seeded default account. Register an account through the application, or use an account your team has explicitly created. The backend refuses to start if `JWT_SECRET` is missing or shorter than 32 characters.
 
 ---
 
@@ -153,7 +153,7 @@ Open your browser at `http://localhost:5173`. Default administrator account is s
 To execute the test suites verifying software reliability and ML pipelines:
 
 ```bash
-# 1. Run Backend Logic & Security Tests (7 unit & integration tests)
+# 1. Run backend validation, advisory, and ML integration checks
 node backend/tests/run_tests.js
 
 # 2. Run Machine Learning Pipeline Tests (Dataset, Scaling, SMOTE, XGBoost, Anomaly)

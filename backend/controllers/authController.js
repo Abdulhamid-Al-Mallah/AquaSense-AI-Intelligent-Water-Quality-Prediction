@@ -9,7 +9,10 @@ import User from '../models/User.js';
  * @returns {string} Signed JWT token
  */
 export function createAuthenticationToken(userId) {
-  const secretKey = process.env.JWT_SECRET || 'aquasense_jwt_secret_dev_key_2026_seng491';
+  const secretKey = process.env.JWT_SECRET;
+  if (!secretKey || secretKey.length < 32) {
+    throw new Error('JWT_SECRET must be configured with at least 32 characters.');
+  }
   return jwt.sign({ id: userId }, secretKey, { expiresIn: '30d' });
 }
 
@@ -102,25 +105,3 @@ export const getMe = asyncHandler(async (request, response) => {
     user: currentUser
   });
 });
-
-/**
- * Helper function that automatically creates a default test account if none exists.
- * Run automatically on server startup.
- */
-export const seedAdmin = async () => {
-  try {
-    const defaultEmail = 'admin@aquasense.ai';
-    const alreadyExists = await User.findOne({ email: defaultEmail });
-    if (!alreadyExists) {
-      await User.create({
-        name: 'AquaSense Admin',
-        email: defaultEmail,
-        password: 'AdminPassword123!',
-        role: 'analyst'
-      });
-      console.log(`[AquaSense AI] Default demo account ready: ${defaultEmail} / AdminPassword123!`);
-    }
-  } catch (seedError) {
-    console.warn(`[AquaSense AI] Demo account setup notice: ${seedError.message}`);
-  }
-};
