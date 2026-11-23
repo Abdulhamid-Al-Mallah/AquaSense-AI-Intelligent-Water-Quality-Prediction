@@ -1,8 +1,8 @@
 /**
  * AquaSense AI - Backend Automated Software Test Suite
  * 
- * Tests core business logic, input validation, WHO safety advisor, 
- * authentication guards, and Python ML model integration.
+ * Tests core business logic, input validation, WHO safety advisor,
+ * and Python ML model integration. Authentication guards require API integration tests.
  */
 
 import assert from 'assert';
@@ -148,6 +148,15 @@ runTest('Should flag multivariate anomaly warning when isAnomaly is true', () =>
   assert.ok(advisory.warnings.some(w => w.includes('Multivariate Anomaly Detected')));
 });
 
+runTest('Should avoid a Safe status when the sample is flagged as an anomaly', () => {
+  const ordinaryParams = {
+    ph: 7.2, turbidity: 1.5, temperature: 18.0, do: 8.0, bod: 1.2,
+    lead: 0.002, mercury: 0.0002, arsenic: 0.002
+  };
+  const advisory = analyzeParameters(ordinaryParams, 92.5, true);
+  assert.strictEqual(advisory.riskStatus, 'Moderate');
+});
+
 console.log('\n--- Test Suite 3: Python Machine Learning Inference Pipeline ---');
 
 await runAsyncTest('Should execute XGBoost prediction and return scores + anomaly status', async () => {
@@ -168,6 +177,7 @@ await runAsyncTest('Should execute XGBoost prediction and return scores + anomal
   assert.ok(prediction.drinkabilityScore >= 0 && prediction.drinkabilityScore <= 100);
   assert.ok([0, 1, 2].includes(prediction.predictedClass));
   assert.strictEqual(typeof prediction.isAnomaly, 'boolean');
+  assert.ok(prediction.anomalyScore >= 0 && prediction.anomalyScore <= 1);
   assert.strictEqual(typeof prediction.anomalyScore, 'number');
   assert.ok(prediction.classProbabilities);
 });

@@ -28,11 +28,6 @@ export const Login = () => {
     }
   };
 
-  const handleQuickDemoFill = () => {
-    setEmailAddress('admin@aquasense.ai');
-    setPassword('AdminPassword123!');
-  };
-
   return (
     <div className="min-h-screen flex bg-slate-900 font-sans">
       {/* Left Environmental Branding Section */}
@@ -56,18 +51,18 @@ export const Login = () => {
               Predictive Water Safety & Intelligent Chemical Remediation.
             </h1>
             <p className="mt-4 text-slate-400 text-base leading-relaxed">
-              Evaluating 8 verified laboratory physical and chemical parameters with leakage-free gradient boosted machine learning and regulatory WHO standard engines.
+              Evaluating eight user-provided physical and chemical parameters with a gradient-boosted model and rule-based guideline checks.
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-3 gap-4 pt-8 border-t border-slate-800/80">
           <div>
-            <p className="text-2xl font-bold text-sky-400">97.5%</p>
+            <p className="text-2xl font-bold text-sky-400">98.0%</p>
             <p className="text-xs text-slate-400 mt-0.5">XGBoost Accuracy</p>
           </div>
           <div>
-            <p className="text-2xl font-bold text-emerald-400">0.9738</p>
+            <p className="text-2xl font-bold text-emerald-400">0.9794</p>
             <p className="text-xs text-slate-400 mt-0.5">Weighted F1 Score</p>
           </div>
           <div>
@@ -82,21 +77,20 @@ export const Login = () => {
         <div className="w-full max-w-md bg-slate-950/80 border border-slate-800 rounded-2xl p-8 shadow-2xl backdrop-blur-sm">
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-white tracking-tight">Sign In to Dashboard</h2>
-            <p className="text-sm text-slate-400 mt-1">Access certified lab telemetry and prediction models.</p>
+            <p className="text-sm text-slate-400 mt-1">Access water-quality analyses and prediction results.</p>
           </div>
 
-          {/* Quick Demo Fill Button */}
           <div className="mb-6 p-3 bg-sky-950/40 border border-sky-800/60 rounded-xl flex items-center justify-between">
             <div className="flex items-center space-x-2 text-xs text-sky-300">
               <Zap className="w-4 h-4 text-sky-400 shrink-0" />
-              <span>Supervisor / Evaluator Demo</span>
+              <span>Project access</span>
             </div>
             <button
               type="button"
-              onClick={handleQuickDemoFill}
+              onClick={() => navigate('/register')}
               className="text-xs bg-sky-600 hover:bg-sky-500 text-white font-medium px-2.5 py-1 rounded-md transition-colors shadow-sm"
             >
-              Fill Demo Credentials
+              Create an account
             </button>
           </div>
 

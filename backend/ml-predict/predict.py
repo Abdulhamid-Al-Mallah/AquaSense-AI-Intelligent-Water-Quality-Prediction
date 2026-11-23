@@ -99,7 +99,7 @@ def run_prediction():
             # Decision function: negative values indicate outliers
             raw_score = float(anomaly_detector.decision_function(scaled_features)[0])
             # Normalize to an intuitive positive anomaly score where higher = more anomalous
-            anomaly_score = round(float(max(0.0, -raw_score * 2.0)), 4)
+            anomaly_score = round(float(max(0.0, min(1.0, -raw_score * 2.0))), 4)
 
         # Step 6: Output JSON string for Node.js child process to read from stdout
         response_data = {

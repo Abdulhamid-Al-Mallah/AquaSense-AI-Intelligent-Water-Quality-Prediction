@@ -20,7 +20,10 @@ export const protect = asyncHandler(async (request, response, next) => {
   }
 
   try {
-    const secretKey = process.env.JWT_SECRET || 'aquasense_jwt_secret_dev_key_2026_seng491';
+    const secretKey = process.env.JWT_SECRET;
+    if (!secretKey || secretKey.length < 32) {
+      return response.status(500).json({ success: false, message: 'Authentication is not configured.' });
+    }
     const decodedTokenData = jwt.verify(bearerToken, secretKey);
 
     const authenticatedUser = await User.findById(decodedTokenData.id).select('-password');

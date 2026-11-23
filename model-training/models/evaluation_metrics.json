@@ -1,0 +1,253 @@
+{
+  "dataset_records": 1000,
+  "train_samples": 700,
+  "validation_samples": 100,
+  "test_samples": 200,
+  "train_resampled_samples": 1923,
+  "class_counts_train_resampled": {
+    "0": 641,
+    "1": 641,
+    "2": 641
+  },
+  "train_class_support": {
+    "0": 4,
+    "1": 55,
+    "2": 641
+  },
+  "validation_class_support": {
+    "0": 1,
+    "1": 8,
+    "2": 91
+  },
+  "test_class_support": {
+    "0": 1,
+    "1": 16,
+    "2": 183
+  },
+  "validation_models": [
+    {
+      "name": "Baseline: Logistic Regression",
+      "accuracy": 0.83,
+      "macro_f1": 0.6648821264205879,
+      "weighted_f1": 0.8594139194139194,
+      "classification_report": {
+        "0": {
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1-score": 0.6666666666666666,
+          "support": 1.0
+        },
+        "1": {
+          "precision": 0.3,
+          "recall": 0.75,
+          "f1-score": 0.42857142857142855,
+          "support": 8.0
+        },
+        "2": {
+          "precision": 0.9743589743589743,
+          "recall": 0.8351648351648352,
+          "f1-score": 0.8994082840236687,
+          "support": 91.0
+        },
+        "accuracy": 0.83,
+        "macro avg": {
+          "precision": 0.5914529914529915,
+          "recall": 0.8617216117216118,
+          "f1-score": 0.6648821264205879,
+          "support": 100.0
+        },
+        "weighted avg": {
+          "precision": 0.9156666666666667,
+          "recall": 0.83,
+          "f1-score": 0.8594139194139194,
+          "support": 100.0
+        }
+      },
+      "confusion_matrix_labels_0_1_2": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          6,
+          2
+        ],
+        [
+          1,
+          14,
+          76
+        ]
+      ]
+    },
+    {
+      "name": "ML Model 1: Random Forest",
+      "accuracy": 0.97,
+      "macro_f1": 0.5963768115942029,
+      "weighted_f1": 0.9641086956521739,
+      "classification_report": {
+        "0": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 1.0
+        },
+        "1": {
+          "precision": 0.8571428571428571,
+          "recall": 0.75,
+          "f1-score": 0.8,
+          "support": 8.0
+        },
+        "2": {
+          "precision": 0.978494623655914,
+          "recall": 1.0,
+          "f1-score": 0.9891304347826086,
+          "support": 91.0
+        },
+        "accuracy": 0.97,
+        "macro avg": {
+          "precision": 0.6118791602662571,
+          "recall": 0.5833333333333334,
+          "f1-score": 0.5963768115942029,
+          "support": 100.0
+        },
+        "weighted avg": {
+          "precision": 0.9590015360983104,
+          "recall": 0.97,
+          "f1-score": 0.9641086956521739,
+          "support": 100.0
+        }
+      },
+      "confusion_matrix_labels_0_1_2": [
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          6,
+          2
+        ],
+        [
+          0,
+          0,
+          91
+        ]
+      ]
+    },
+    {
+      "name": "ML Model 2: XGBoost",
+      "accuracy": 0.97,
+      "macro_f1": 0.6041801335918983,
+      "weighted_f1": 0.9658823529411765,
+      "classification_report": {
+        "0": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 1.0
+        },
+        "1": {
+          "precision": 0.7777777777777778,
+          "recall": 0.875,
+          "f1-score": 0.8235294117647058,
+          "support": 8.0
+        },
+        "2": {
+          "precision": 0.989010989010989,
+          "recall": 0.989010989010989,
+          "f1-score": 0.989010989010989,
+          "support": 91.0
+        },
+        "accuracy": 0.97,
+        "macro avg": {
+          "precision": 0.5889295889295889,
+          "recall": 0.6213369963369964,
+          "f1-score": 0.6041801335918983,
+          "support": 100.0
+        },
+        "weighted avg": {
+          "precision": 0.9622222222222223,
+          "recall": 0.97,
+          "f1-score": 0.9658823529411765,
+          "support": 100.0
+        }
+      },
+      "confusion_matrix_labels_0_1_2": [
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          7,
+          1
+        ],
+        [
+          0,
+          1,
+          90
+        ]
+      ]
+    }
+  ],
+  "champion": "ML Model 2: XGBoost",
+  "test_classification_report": {
+    "0": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 1.0
+    },
+    "1": {
+      "precision": 0.9333333333333333,
+      "recall": 0.875,
+      "f1-score": 0.9032258064516129,
+      "support": 16.0
+    },
+    "2": {
+      "precision": 0.9891891891891892,
+      "recall": 1.0,
+      "f1-score": 0.9945652173913043,
+      "support": 183.0
+    },
+    "accuracy": 0.985,
+    "macro avg": {
+      "precision": 0.6408408408408408,
+      "recall": 0.625,
+      "f1-score": 0.6325970079476391,
+      "support": 200.0
+    },
+    "weighted avg": {
+      "precision": 0.9797747747747748,
+      "recall": 0.985,
+      "f1-score": 0.9822852384291724,
+      "support": 200.0
+    }
+  },
+  "test_confusion_matrix_labels_0_1_2": [
+    [
+      0,
+      1,
+      0
+    ],
+    [
+      0,
+      14,
+      2
+    ],
+    [
+      0,
+      0,
+      183
+    ]
+  ],
+  "anomaly_detector": {
+    "algorithm": "IsolationForest",
+    "contamination": 0.05,
+    "test_anomalies_flagged": 21
+  }
+}

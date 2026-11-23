@@ -168,6 +168,11 @@ export function analyzeParameters(parameters, drinkabilityScore = null, isAnomal
     }
   }
 
+  // An outlier is a review signal; it should not be presented as a confirmed safe result.
+  if (isAnomaly && calculatedRiskStatus === 'Safe') {
+    calculatedRiskStatus = 'Moderate';
+  }
+
   return {
     warnings: detectedWarnings,
     recommendations: actionRecommendations,

@@ -106,7 +106,7 @@ export const Layout = () => {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
-            <span className="text-xs font-semibold text-slate-600">Decision Engine: XGBoost Active (0.9738 F1)</span>
+            <span className="text-xs font-semibold text-slate-600">Decision Engine: XGBoost</span>
           </div>
 
           <div className="flex items-center space-x-4 text-xs text-slate-500">

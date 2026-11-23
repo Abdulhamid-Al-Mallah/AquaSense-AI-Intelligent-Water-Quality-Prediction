@@ -35,26 +35,42 @@ class TestAquaSenseMLPipeline(unittest.TestCase):
         self.assertEqual(len(df), 1000)
         self.assertEqual(df[self.feature_cols].isnull().sum().sum(), 0)
 
-    def test_02_scaler_first_smote_resampling(self):
-        """Ensures StandardScaler is applied before SMOTE, producing balanced classes."""
+    def test_02_train_test_validation_split_and_train_only_smote(self):
+        """Ensures 70/20/10 partition sizes and keeps scaling/SMOTE training-only."""
         df = pd.read_csv(self.data_path)
         X = df[self.feature_cols]
         y = df['Pollution_Level']
 
-        X_train, X_test, y_train, y_test = train_test_split(
+        X_trainval, X_test, y_trainval, y_test = train_test_split(
             X, y, test_size=0.20, random_state=42, stratify=y
         )
+        X_train, X_validation, y_train, y_validation = train_test_split(
+            X_trainval, y_trainval, test_size=0.125, random_state=42, stratify=y_trainval
+        )
+        self.assertEqual((len(X_train), len(X_validation), len(X_test)), (700, 100, 200))
+        self.assertEqual(y_train.value_counts().sort_index().tolist(), [4, 55, 641])
+        self.assertEqual(y_validation.value_counts().sort_index().tolist(), [1, 8, 91])
+        self.assertEqual(y_test.value_counts().sort_index().tolist(), [1, 16, 183])
+        self.assertFalse(set(X_train.index) & set(X_validation.index))
+        self.assertFalse(set(X_train.index) & set(X_test.index))
+        self.assertFalse(set(X_validation.index) & set(X_test.index))
 
         scaler = StandardScaler()
         X_train_scaled = scaler.fit_transform(X_train)
+        X_validation_scaled = scaler.transform(X_validation)
+        X_test_scaled = scaler.transform(X_test)
+        self.assertEqual(X_validation_scaled.shape[0], 100)
+        self.assertEqual(X_test_scaled.shape[0], 200)
 
-        smote = SMOTE(k_neighbors=4, random_state=42)
+        smote = SMOTE(k_neighbors=3, random_state=42)
         X_train_res, y_train_res = smote.fit_resample(X_train_scaled, y_train)
 
-        # In balanced set, all classes have equal frequency
+        # Training-only balanced set; validation/test are transformed but never resampled.
         class_counts = y_train_res.value_counts()
         self.assertEqual(class_counts[0], class_counts[1])
         self.assertEqual(class_counts[1], class_counts[2])
+        self.assertEqual(class_counts[0], 641)
+        self.assertEqual(len(y_train_res), 1923)
 
     def test_03_serialized_artifacts_exist(self):
         """Verifies that model.pkl, scaler.pkl, and anomaly_detector.pkl exist."""

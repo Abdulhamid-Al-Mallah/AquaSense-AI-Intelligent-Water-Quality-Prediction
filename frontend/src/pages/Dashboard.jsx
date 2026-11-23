@@ -116,7 +116,7 @@ export const Dashboard = () => {
           </div>
           <div className="mt-3">
             <span className="text-3xl font-black text-slate-900">{dashboardSummary?.totalTests || 0}</span>
-            <span className="text-xs text-slate-400 ml-2 font-medium">certified assays</span>
+            <span className="text-xs text-slate-400 ml-2 font-medium">submitted samples</span>
           </div>
           <p className="text-[11px] text-slate-500 mt-2 flex items-center space-x-1">
             <span className="text-emerald-600 font-semibold">100%</span>
